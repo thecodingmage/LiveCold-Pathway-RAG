@@ -1,0 +1,1222 @@
+`<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LiveCold — Cold Chain Intelligence Platform</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #060b14;
+            color: #e0e6f0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: linear-gradient(135deg, #080e1e 0%, #0e1a33 100%);
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(79, 195, 247, 0.1);
+            z-index: 100;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #4fc3f7, #00e5ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(76, 175, 80, 0.15);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #4caf50;
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            background: #4caf50;
+            border-radius: 50%;
+            animation: livePulse 2s infinite;
+        }
+
+        @keyframes livePulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.5); }
+            50%       { opacity: 0.6; box-shadow: 0 0 0 6px rgba(76, 175, 80, 0); }
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .clock {
+            font-size: 12px;
+            color: #6b7d94;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ── Main wrapper ── */
+        .main-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* ── Metrics Bar ── */
+        .metrics-bar {
+            display: flex;
+            gap: 0;
+            background: linear-gradient(180deg, #0a1020, #080e1a);
+            border-bottom: 1px solid rgba(79, 195, 247, 0.06);
+            flex-shrink: 0;
+        }
+
+        .metric-card {
+            flex: 1;
+            padding: 12px 16px;
+            border-right: 1px solid rgba(79, 195, 247, 0.06);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card:last-child { border-right: none; }
+        .metric-card .icon { font-size: 14px; margin-bottom: 2px; }
+        .metric-card .value {
+            font-size: 26px;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            transition: all 0.5s;
+        }
+        .metric-card .label {
+            font-size: 10px;
+            color: #5a6f85;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            margin-top: 2px;
+            font-weight: 500;
+        }
+        .metric-card .subtext { font-size: 10px; color: #3a5060; margin-top: 1px; }
+
+        .mc-blue   .value { color: #4fc3f7; }
+        .mc-red    .value { color: #ff5252; }
+        .mc-yellow .value { color: #ffb74d; }
+        .mc-green  .value { color: #66bb6a; text-shadow: 0 0 20px rgba(102, 187, 106, 0.3); }
+        .mc-cyan   .value { color: #26c6da; }
+        .mc-purple .value { color: #ba68c8; }
+        .mc-green  { background: linear-gradient(180deg, rgba(76, 175, 80, 0.05), transparent); }
+
+        /* ── Prediction Banner ── */
+        .prediction-banner {
+            display: none;
+            padding: 6px 24px;
+            background: linear-gradient(90deg, rgba(255, 183, 77, 0.1), rgba(255, 183, 77, 0.05));
+            border-bottom: 1px solid rgba(255, 183, 77, 0.2);
+            font-size: 12px;
+            color: #ffb74d;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .prediction-banner .pred-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 183, 77, 0.08);
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+
+        /* ── Content Row: left-panel | map | right-panel ── */
+        .content-row {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* ── Left Panel (Alerts only) ── */
+        .left-panel {
+            width: 300px;
+            flex-shrink: 0;
+            background: #080e1a;
+            border-right: 1px solid rgba(79, 195, 247, 0.06);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        /* ── Map ── */
+        .map-container {
+            flex: 1;
+            position: relative;
+            min-width: 0;
+        }
+
+        #map { width: 100%; height: 100%; background: #060b14; }
+
+        .map-overlay {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            z-index: 1000;
+            display: flex;
+            gap: 6px;
+        }
+
+        .map-chip {
+            background: rgba(10, 16, 30, 0.85);
+            backdrop-filter: blur(8px);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            border: 1px solid rgba(79, 195, 247, 0.1);
+            color: #8899aa;
+        }
+
+        /* ── Map CSS Filters ── */
+        .base-map-grey {
+            filter: brightness(2.2) contrast(0.85) grayscale(1);
+        }
+
+        .green-labels {
+            filter: invert(1) sepia(100%) hue-rotate(85deg) saturate(180%) brightness(1.6) drop-shadow(0 0 2px rgba(0,0,0,0.9));
+        }
+
+        .map-close-btn { display: none; }
+
+        /* ── Right Panel (Fleet + Notifications) ── */
+        .right-panel {
+            width: 360px;
+            flex-shrink: 0;
+            background: #080e1a;
+            border-left: 1px solid rgba(79, 195, 247, 0.06);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        /* ── Shared panel chrome ── */
+        .panel-section { border-bottom: 1px solid rgba(79, 195, 247, 0.06); }
+
+        .panel-header {
+            padding: 10px 16px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #4a5d73;
+            background: rgba(6, 11, 20, 0.8);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .panel-header .count {
+            background: rgba(79, 195, 247, 0.1);
+            color: #4fc3f7;
+            padding: 1px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+        }
+
+        /* ── Search Input ── */
+        .panel-search {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(79, 195, 247, 0.2);
+            color: #e0e6f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            width: 110px;
+            margin-left: auto;
+            margin-right: 8px;
+            outline: none;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        .panel-search::placeholder { color: #5a6f85; }
+        .panel-search:focus { border-color: #4fc3f7; }
+
+        /* ── Alerts ── */
+        .alerts-section { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+        .alerts-list { overflow-y: auto; flex: 1; min-height: 0; }
+        .alert-item { padding: 10px 16px; border-bottom: 1px solid rgba(20, 28, 46, 0.8); font-size: 12px; transition: background 0.2s; cursor: pointer; }
+        .alert-item:hover { background: rgba(20, 28, 46, 0.6); }
+        .alert-item.divert { border-left: 3px solid #ff5252; background: rgba(255, 82, 82, 0.03); }
+        .alert-item.door { border-left: 3px solid #ffc107; }
+        .alert-top { display: flex; justify-content: space-between; align-items: center; }
+        .alert-id { font-weight: 700; font-size: 13px; }
+        .alert-badge { font-size: 9px; padding: 2px 8px; border-radius: 10px; font-weight: 700; letter-spacing: 0.5px; }
+        .alert-badge.divert   { background: #ff5252; color: #fff; }
+        .alert-badge.door     { background: #ffc107; color: #000; }
+        .alert-badge.continue { background: rgba(76, 175, 80, 0.2); color: #66bb6a; }
+        .alert-detail { font-size: 11px; color: #5a6f85; margin-top: 3px; }
+        .sop-rec { font-size: 11px; color: #81d4fa; background: rgba(79, 195, 247, 0.05); padding: 8px 10px; border-radius: 6px; margin-top: 6px; border-left: 2px solid rgba(79, 195, 247, 0.4); white-space: pre-line; line-height: 1.5; max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .alert-item.expanded > .sop-rec { max-height: 300px; }
+        .sop-toggle { font-size: 10px; color: #4fc3f7; cursor: pointer; margin-top: 5px; font-weight: 600; background: rgba(79, 195, 247, 0.08); border: 1px solid rgba(79, 195, 247, 0.18); padding: 2px 8px; border-radius: 6px; display: inline-block; }
+        .sop-toggle:hover { background: rgba(79, 195, 247, 0.16); }
+
+        /* ── Fleet ── */
+        .fleet-section { display: flex; flex-direction: column; flex: 6; min-height: 0; overflow: hidden; }
+        .shipment-list { overflow-y: auto; flex: 1; min-height: 0; }
+        .shipment-item { padding: 8px 16px; border-bottom: 1px solid rgba(20, 28, 46, 0.6); font-size: 12px; display: grid; grid-template-columns: 60px 1fr 45px 45px 24px 24px; gap: 6px; align-items: center; cursor: pointer; transition: background 0.15s; }
+        .shipment-item:hover { background: rgba(20, 28, 46, 0.5); }
+        .sid { font-weight: 700; color: #81d4fa; font-size: 11px; }
+        .route { color: #4a5d73; font-size: 10px; line-height: 1.3; }
+        .temp { text-align: right; font-weight: 700; font-size: 13px; }
+        .temp.safe   { color: #66bb6a; }
+        .temp.warn   { color: #ffb74d; }
+        .temp.danger { color: #ff5252; }
+        .risk { text-align: right; font-size: 10px; font-weight: 600; }
+        .driver-link { font-size: 14px; text-align: center; opacity: 0.3; transition: opacity 0.2s; text-decoration: none;}
+        .shipment-item:hover .driver-link { opacity: 1; }
+
+        /* ── Notifications ── */
+        .notif-section { display: flex; flex-direction: column; flex: 4; min-height: 0; overflow: hidden; }
+        .notif-list { overflow-y: auto; flex: 1; min-height: 0; }
+        .notif-item { padding: 8px 14px; border-bottom: 1px solid rgba(20, 28, 46, 0.6); font-size: 11px; transition: background 0.2s; }
+        .notif-item:hover { background: rgba(20, 28, 46, 0.5); }
+        .notif-item.divert-wa  { border-left: 3px solid #ff5252; }
+        .notif-item.repair-wa  { border-left: 3px solid #ff9800; }
+        .notif-item.delivery-em{ border-left: 3px solid #66bb6a; }
+        .notif-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+        .notif-channel { font-size: 9px; padding: 1px 6px; border-radius: 8px; font-weight: 700; letter-spacing: 0.5px; }
+        .notif-channel.wa    { background: #25D366; color: #fff; }
+        .notif-channel.email { background: #4fc3f7; color: #000; }
+        .notif-msg { color: #8899aa; white-space: pre-line; line-height: 1.4; max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .notif-item.expanded .notif-msg { max-height: 300px; }
+        .notif-expand { color: #4fc3f7; cursor: pointer; font-size: 10px; margin-top: 2px; display: inline-block; }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #1e3050; border-radius: 2px; }
+
+        /* ── SOP Sync Badge ── */
+        .sop-sync-badge { display: flex; align-items: center; gap: 6px; background: rgba(76, 175, 80, 0.10); border: 1px solid rgba(76, 175, 80, 0.25); padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; color: #4caf50; transition: all 0.4s ease; }
+        .sop-sync-badge.updating { background: rgba(255, 183, 77, 0.15); border-color: rgba(255, 183, 77, 0.4); color: #ffb74d; }
+        .sop-sync-dot { width: 6px; height: 6px; background: #4caf50; border-radius: 50%; transition: all 0.4s ease; }
+        .sop-sync-badge.updating .sop-sync-dot { background: #ffb74d; animation: sopPulse 0.8s ease 3; }
+        @keyframes sopPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 183, 77, 0.6); } 50% { box-shadow: 0 0 0 8px rgba(255, 183, 77, 0); } }
+
+        /* ── Mobile: floating "View Map" button ── */
+        .mobile-map-btn { display: none; }
+
+        /* ── Responsive Mobile Design ── */
+        @media (max-width: 768px) {
+            body { overflow-y: auto; height: auto; }
+            .header { flex-wrap: wrap; gap: 12px; padding: 12px 16px; }
+            .header-left, .header-right { width: 100%; justify-content: space-between; }
+            
+            /* Stack metrics into a grid */
+            .metrics-bar { flex-wrap: wrap; }
+            .metric-card { min-width: 50%; flex: 1 1 50%; border-bottom: 1px solid rgba(79, 195, 247, 0.06); }
+            .metric-card:nth-child(even) { border-right: none; }
+
+            /* Stack main panels */
+            .content-row { flex-direction: column; overflow: visible; display: block; }
+            
+            .left-panel, .right-panel { 
+                width: 100%; 
+                display: block; 
+                height: auto; 
+                overflow: visible; 
+                border: none; 
+            }
+            
+            /* Allow internal scrolling for lists on mobile but keep them bounded */
+            .alerts-section, .fleet-section, .notif-section { 
+                height: 400px; 
+                border-bottom: 4px solid #000;
+            }
+
+            /* Hide Map Container off-screen instead of using display: none */
+            .map-container { 
+                position: fixed;
+                left: -9999px; 
+                top: 0;
+                width: 100vw;
+                height: 100vh;
+                visibility: hidden;
+                opacity: 0;
+                transition: opacity 0.2s ease;
+            }
+
+            /* Map Open State */
+            body.mobile-map-open { overflow: hidden; height: 100vh; }
+            
+            body.mobile-map-open .map-container {
+                left: 0; 
+                visibility: visible;
+                opacity: 1;
+                z-index: 2000; 
+            }
+            
+            /* Hide the side panels and headers, but keep content-row visible so the map shows */
+            body.mobile-map-open .header,
+            body.mobile-map-open .metrics-bar,
+            body.mobile-map-open .left-panel,
+            body.mobile-map-open .right-panel,
+            body.mobile-map-open .prediction-banner { display: none; }
+
+            /* Show Floating Map Button */
+            .mobile-map-btn {
+                display: block;
+                position: fixed;
+                bottom: 24px;
+                right: 24px;
+                z-index: 1500;
+                background: #4fc3f7;
+                color: #060b14;
+                border: none;
+                border-radius: 30px;
+                padding: 14px 20px;
+                font-size: 14px;
+                font-weight: 800;
+                cursor: pointer;
+                box-shadow: 0 4px 16px rgba(79, 195, 247, 0.4);
+                transition: transform 0.2s;
+            }
+            .mobile-map-btn:active { transform: scale(0.95); }
+            
+            /* Hide open button when map is active */
+            body.mobile-map-open .mobile-map-btn { display: none; }
+
+            /* Floating Close Button for Map */
+            .map-close-btn {
+                display: flex;
+                position: absolute;
+                bottom: 30px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 2001;
+                background: #ff5252;
+                color: #ffffff;
+                border: none;
+                border-radius: 30px;
+                padding: 12px 24px;
+                font-size: 15px;
+                font-weight: 700;
+                box-shadow: 0 4px 16px rgba(255, 82, 82, 0.4);
+                cursor: pointer;
+            }
+        }
+
+        @media (min-width: 769px) and (max-width: 1100px) {
+            .left-panel  { width: 240px; }
+            .right-panel { width: 300px; }
+            .metrics-bar { flex-wrap: wrap; }
+            .metric-card { min-width: 25%; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-left">
+            <h1>🧊 LiveCold</h1>
+            <div class="live-badge">
+                <div class="live-dot"></div>LIVE
+            </div>
+            <a href="/analytics" style="color:#4fc3f7;font-size:11px;text-decoration:none;margin-left:16px;opacity:0.7" title="Business Analytics">📊 Analytics</a>
+            <a href="/sop-editor" style="color:#4fc3f7;font-size:11px;text-decoration:none;margin-left:8px;opacity:0.7" title="SOP Editor & RAG Demo">📝 SOP Editor</a>
+        </div>
+        <div class="header-right">
+            <div class="sop-sync-badge" id="sopSyncBadge" title="SOP document sync status">
+                <div class="sop-sync-dot"></div>
+                <span id="sopSyncText">SOP synced</span>
+            </div>
+            <div id="routingModeSummary" style="display:flex;gap:8px;align-items:center;font-size:11px;background:rgba(255,255,255,0.05);padding:4px 12px;border-radius:20px">
+                <span style="color:#ff5252" title="SAFETY mode">🛡️ <b id="rm-safety">0</b></span>
+                <span style="color:#4fc3f7" title="BALANCED mode">⚖️ <b id="rm-balanced">0</b></span>
+                <span style="color:#66bb6a" title="ECO mode">🌱 <b id="rm-eco">0</b></span>
+            </div>
+            <span id="event-count" style="font-size:11px;color:#5a6f85">0 events</span>
+            <span class="clock" id="clock"></span>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+
+        <div class="metrics-bar">
+            <div class="metric-card mc-blue">
+                <div class="icon">🚚</div>
+                <div class="value" id="m-shipments">0</div>
+                <div class="label">Active Trucks</div>
+            </div>
+            <div class="metric-card mc-red">
+                <div class="icon">🔄</div>
+                <div class="value" id="m-diversions">0</div>
+                <div class="label">Diversions</div>
+            </div>
+            <div class="metric-card mc-yellow">
+                <div class="icon">⚠️</div>
+                <div class="value" id="m-highrisk">0</div>
+                <div class="label">High Risk</div>
+            </div>
+            <div class="metric-card mc-green">
+                <div class="icon">💰</div>
+                <div class="value" id="m-saved">₹0</div>
+                <div class="label">Cargo Saved</div>
+                <div class="subtext" id="m-saved-sub"></div>
+            </div>
+            <div class="metric-card mc-cyan">
+                <div class="icon">📊</div>
+                <div class="value" id="m-value">₹0</div>
+                <div class="label">Value Monitored</div>
+            </div>
+            <div class="metric-card mc-purple">
+                <div class="icon">🌿</div>
+                <div class="value" id="m-co2">0</div>
+                <div class="label">CO₂ Delta (kg)</div>
+            </div>
+            <div class="metric-card" style="border-color:#ff6d00">
+                <div class="icon">🛡️</div>
+                <div class="value" id="m-anomalies" style="color:#ff6d00">0</div>
+                <div class="label">Anomalies Filtered</div>
+            </div>
+        </div>
+
+        <div class="prediction-banner" id="predictionBanner">
+            <span>🔮 Predictions:</span>
+            <div id="predictionList"></div>
+        </div>
+
+        <div class="content-row">
+
+            <div class="left-panel">
+                <div class="alerts-section panel-section">
+                    <div class="panel-header">
+                        🚨 Alerts
+                        <input type="text" id="alert-search" class="panel-search" placeholder="Search ID..." onclick="event.stopPropagation()">
+                        <span class="count" id="alert-count">0</span>
+                    </div>
+                    <div class="alerts-list" id="alerts-list">
+                        <div class="alert-item" style="color:#4a5d73;text-align:center;padding:30px;">
+                            Waiting for alerts...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="map-container" id="mapContainer">
+                <div class="map-overlay">
+                    <div class="map-chip" id="hubChip">🏭 15 Hubs</div>
+                    <div class="map-chip" id="truckChip">🚚 0 Trucks</div>
+                </div>
+                <button class="map-close-btn" onclick="closeMobileMap()">❌ Close Map</button>
+                <div id="map"></div>
+            </div>
+
+            <div class="right-panel">
+
+                <div class="fleet-section panel-section">
+                    <div class="panel-header">
+                        🚚 Fleet
+                        <input type="text" id="fleet-search" class="panel-search" placeholder="Search ID..." onclick="event.stopPropagation()">
+                        <span class="count" id="fleet-count">0</span>
+                    </div>
+                    <div class="shipment-list" id="shipment-list">
+                        <div class="shipment-item" style="color:#4a5d73;grid-template-columns:1fr;text-align:center;padding:30px;">
+                            Waiting for data...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="notif-section panel-section">
+                    <div class="panel-header" style="cursor:pointer" onclick="document.getElementById('notif-list').style.display = document.getElementById('notif-list').style.display === 'none' ? '' : 'none'">
+                        📲 Notifications
+                        <input type="text" id="notif-search" class="panel-search" placeholder="Search ID..." onclick="event.stopPropagation()">
+                        <span class="count" id="notif-count">0 ▾</span>
+                    </div>
+                    <div class="notif-list" id="notif-list">
+                        <div style="color:#4a5d73;text-align:center;padding:20px;font-size:11px">
+                            Waiting for notifications...
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <button class="mobile-map-btn" onclick="openMobileMap()">🗺️ View Map</button>
+
+    <script>
+        // Set up tracking for expanded states and button cooldowns
+        const expandedAlerts = new Set();
+        const expandedNotifs = new Set();
+        const sentCooldowns = new Set();
+
+        // ── Mobile map toggle ──
+        function openMobileMap() {
+            document.body.classList.add('mobile-map-open');
+            // Increased timeout so Leaflet computes sizing properly when container moves on-screen
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 300);
+        }
+        function closeMobileMap() {
+            document.body.classList.remove('mobile-map-open');
+        }
+
+        // ── Map Setup — Stacked Layers for customized colors ──
+        const map = L.map('map').setView([22.5, 79.0], 5);
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+            attribution: '© CartoDB', 
+            maxZoom: 19,
+            maxNativeZoom: 16, 
+            className: 'base-map-grey'
+        }).addTo(map);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            maxNativeZoom: 16,
+            className: 'green-labels'
+        }).addTo(map);
+
+        const markers    = {};
+        const hubMarkers = [];
+
+        // ── Marker Icons ──
+        function truckIcon(risk, action) {
+            const color = action === 'DIVERT' ? '#ff5252' :
+                risk > 0.5 ? '#ffb74d' : '#66bb6a';
+            const size  = action === 'DIVERT' ? 18 : 14;
+            const pulse = action === 'DIVERT' ? 'animation: markerPulse 1.5s infinite;' : '';
+            return L.divIcon({
+                html: `<div style="
+                    width:${size}px;height:${size}px;
+                    background:${color};
+                    border:2px solid rgba(255,255,255,0.9);
+                    border-radius:50%;
+                    box-shadow:0 0 12px ${color}60, 0 0 4px ${color};
+                    ${pulse}
+                "></div>`,
+                iconSize: [size, size],
+                iconAnchor: [size / 2, size / 2],
+                className: ''
+            });
+        }
+
+        const _style = document.createElement('style');
+        _style.textContent = `
+            @keyframes markerPulse {
+                0%, 100% { transform: scale(1); opacity: 1; }
+                50%       { transform: scale(1.6); opacity: 0.5; }
+            }
+        `;
+        document.head.appendChild(_style);
+
+        function hubIconFn(status) {
+            const color = status === 'available' ? '#2e7d32' : '#e65100';
+            return L.divIcon({
+                html: `<div style="
+                    width:10px;height:10px;
+                    background:${color};
+                    border:1.5px solid rgba(255,255,255,0.5);
+                    border-radius:2px;
+                    box-shadow:0 0 6px ${color}60;
+                    transform:rotate(45deg);
+                "></div>`,
+                iconSize: [10, 10],
+                iconAnchor: [5, 5],
+                className: ''
+            });
+        }
+
+        // ── Load Hubs ──
+        function loadHubs() {
+            fetch('/api/hubs').then(r => r.json()).then(hubs => {
+                hubMarkers.forEach(m => map.removeLayer(m));
+                hubMarkers.length = 0;
+                hubs.forEach(h => {
+                    const m = L.marker([h.lat, h.lon], { icon: hubIconFn(h.status) })
+                        .addTo(map)
+                        .bindPopup(`<div style="font-family:Inter,system-ui;min-width:180px;font-size:12px;color:#000;">
+                            <b style="font-size:14px">${h.name}</b><br>
+                            <span style="color:${h.status === 'available' ? '#66bb6a' : '#ff5252'}">${h.status.toUpperCase()}</span><br>
+                            <hr style="border-color:#333;margin:4px 0">
+                            🌡 Zones: <b>${(h.temp_zone_labels || []).join(', ') || (h.accepts || []).join(', ')}</b><br>
+                            📦 Available: <b>${h.available_tonnes || Math.round(h.capacity_tonnes * (1 - h.occupied_pct / 100))}T</b> / ${h.capacity_tonnes}T<br>
+                            📊 Occupancy: ${h.occupied_pct}%<br>
+                            📞 ${h.contact || ''}
+                        </div>`);
+                    hubMarkers.push(m);
+                });
+                document.getElementById('hubChip').textContent = `🏭 ${hubs.length} Hubs`;
+            }).catch(() => { });
+        }
+
+        // ── Update Marker ──
+        function updateMarker(s) {
+            if (!s.lat || !s.lon) return;
+            const icon  = truckIcon(s.risk_probability, s.recommended_action);
+            const temp  = s.temp != null ? s.temp.toFixed(1) + '°C' : 'N/A';
+            const color = s.recommended_action === 'DIVERT' ? '#ff5252' :
+                s.risk_probability > 0.5 ? '#ffb74d' : '#66bb6a';
+            const popup = `
+                <div style="font-family:Inter,system-ui;min-width:200px;font-size:13px;color:#000;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <b style="font-size:15px">${s.shipment_id}</b>
+                        <span style="background:${color};color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">${s.recommended_action}</span>
+                    </div>
+                    <hr style="border-color:#ccc;margin:6px 0;">
+                    <div style="color:#555">${s.product_type} · ${s.cargo_value_inr ? '₹' + (s.cargo_value_inr / 100000).toFixed(1) + 'L' : ''}</div>
+                    <div style="margin-top:4px">
+                        🌡 <b>${temp}</b> <span style="color:#888">(${s.safe_min_temp}–${s.safe_max_temp}°C)</span><br>
+                        ⚠️ Risk: <b style="color:${color}">${(s.risk_probability * 100).toFixed(0)}%</b><br>
+                        📍 ${s.origin} → ${s.destination}<br>
+                        ❄️ Reefer: ${s.compressor_status || 'N/A'}
+                    </div>
+                    <div style="margin-top:6px;text-align:center">
+                        <a href="/driver/${s.shipment_id}" target="_blank"
+                           style="color:#0288d1;font-size:11px;text-decoration:none;font-weight:bold;">
+                            📱 Open Driver View →
+                        </a>
+                    </div>
+                </div>`;
+
+            if (markers[s.shipment_id]) {
+                markers[s.shipment_id].setLatLng([s.lat, s.lon]);
+                markers[s.shipment_id].setIcon(icon);
+                markers[s.shipment_id].setPopupContent(popup);
+            } else {
+                markers[s.shipment_id] = L.marker([s.lat, s.lon], { icon })
+                    .addTo(map).bindPopup(popup);
+            }
+        }
+
+        // ── Animate Counter ──
+        function animateValue(el, target, prefix = '', suffix = '') {
+            const current = parseFloat(el.dataset.current || '0');
+            if (Math.abs(current - target) < 1) {
+                el.textContent = prefix + formatNum(target) + suffix;
+                el.dataset.current = target;
+                return;
+            }
+            const diff = target - current;
+            const step = diff / 20;
+            let frame = 0;
+            function tick() {
+                frame++;
+                const val = current + step * frame;
+                el.textContent = prefix + formatNum(val) + suffix;
+                if (frame < 20) requestAnimationFrame(tick);
+                else {
+                    el.textContent = prefix + formatNum(target) + suffix;
+                    el.dataset.current = target;
+                }
+            }
+            tick();
+        }
+
+        function formatNum(n) {
+            if (Math.abs(n) >= 10000000) return (n / 10000000).toFixed(1) + 'Cr';
+            if (Math.abs(n) >= 100000)   return (n / 100000).toFixed(1) + 'L';
+            if (Math.abs(n) >= 1000)     return (n / 1000).toFixed(0) + 'K';
+            return Math.round(n).toLocaleString('en-IN');
+        }
+
+        // ── Metrics ──
+        function updateMetrics() {
+            fetch('/api/metrics').then(r => r.json()).then(m => {
+                document.getElementById('m-shipments').textContent  = m.total_shipments || 0;
+                document.getElementById('m-diversions').textContent = m.active_diversions || 0;
+                document.getElementById('m-highrisk').textContent   = m.high_risk_events || 0;
+                animateValue(document.getElementById('m-saved'), m.total_value_saved     || 0, '₹');
+                animateValue(document.getElementById('m-value'), m.total_value_monitored || 0, '₹');
+                document.getElementById('m-co2').textContent        = (m.total_co2_delta || 0).toFixed(0);
+                document.getElementById('m-anomalies').textContent  = m.anomalies_filtered || 0;
+                document.getElementById('event-count').textContent  = (m.total_events || 0) + ' events';
+                document.getElementById('truckChip').textContent    = `🚚 ${m.total_shipments || 0} Trucks`;
+
+                if (m.routing_modes) {
+                    document.getElementById('rm-safety').textContent   = m.routing_modes.SAFETY   || 0;
+                    document.getElementById('rm-balanced').textContent = m.routing_modes.BALANCED || 0;
+                    document.getElementById('rm-eco').textContent      = m.routing_modes.ECO      || 0;
+                }
+            }).catch(() => { });
+        }
+
+        // ── Fleet ──
+        function updateShipmentList() {
+            fetch('/api/shipments').then(r => r.json()).then(ships => {
+                const list = document.getElementById('shipment-list');
+                const q = document.getElementById('fleet-search').value.toLowerCase();
+                
+                let filteredShips = ships;
+                if (q) {
+                    filteredShips = ships.filter(s => String(s.shipment_id).toLowerCase().includes(q));
+                }
+                
+                if (!filteredShips.length) {
+                    list.innerHTML = `<div class="shipment-item" style="color:#4a5d73;grid-template-columns:1fr;text-align:center;padding:30px;">No matching data...</div>`;
+                    document.getElementById('fleet-count').textContent = 0;
+                    return;
+                }
+
+                document.getElementById('fleet-count').textContent = filteredShips.length;
+
+                filteredShips.sort((a, b) => {
+                    if (a.recommended_action === 'DIVERT' && b.recommended_action !== 'DIVERT') return -1;
+                    if (b.recommended_action === 'DIVERT' && a.recommended_action !== 'DIVERT') return 1;
+                    return b.risk_probability - a.risk_probability;
+                });
+
+                list.innerHTML = filteredShips.map(s => {
+                    const temp = s.temp != null ? s.temp.toFixed(1) : '--';
+                    let tc = 'safe';
+                    if (s.temp != null) {
+                        if (s.temp > s.safe_max_temp || s.temp < s.safe_min_temp) tc = 'danger';
+                        else if (s.temp > s.safe_max_temp - 1 || s.temp < s.safe_min_temp + 1) tc = 'warn';
+                    }
+                    const risk    = (s.risk_probability * 100).toFixed(0);
+                    const rc      = risk > 60 ? '#ff5252' : risk > 30 ? '#ffb74d' : '#66bb6a';
+                    const rm      = s.routing_mode || 'BALANCED';
+                    const rmIcon  = rm === 'SAFETY' ? '🛡️' : rm === 'ECO' ? '🌱' : '⚖️';
+                    const rmColor = rm === 'SAFETY' ? '#ff5252' : rm === 'ECO' ? '#66bb6a' : '#4fc3f7';
+
+                    return `<div class="shipment-item" data-lat="${s.lat || 22}" data-lon="${s.lon || 79}">
+                        <div class="sid">${s.shipment_id}</div>
+                        <div class="route">${s.product_type}<br>${s.origin}→${s.destination}</div>
+                        <div class="temp ${tc}">${temp}°</div>
+                        <div class="risk" style="color:${rc}">${risk}%</div>
+                        <span class="rm-toggle"
+                              data-sid="${s.shipment_id}"
+                              title="${rm}"
+                              style="cursor:pointer;font-size:14px;padding:2px;border:1px solid ${rmColor};border-radius:6px;line-height:1"
+                              id="rm-${s.shipment_id}">${rmIcon}</span>
+                        <a class="driver-link" href="/driver/${s.shipment_id}" target="_blank" title="Driver View">📱</a>
+                    </div>`;
+                }).join('');
+
+                list.querySelectorAll('.shipment-item').forEach(row => {
+                    row.addEventListener('click', () => {
+                        map.setView([parseFloat(row.dataset.lat), parseFloat(row.dataset.lon)], 8);
+                        
+                        // If on mobile, automatically open map when clicking a shipment
+                        if(window.innerWidth <= 768) {
+                            openMobileMap();
+                        }
+                    });
+                });
+                
+                list.querySelectorAll('.rm-toggle').forEach(btn => {
+                    btn.addEventListener('click', e => {
+                        e.stopPropagation();
+                        cycleRoutingMode(btn.dataset.sid);
+                    });
+                });
+
+                // Always update markers for the entire fleet, regardless of active search term
+                ships.forEach(updateMarker);
+            }).catch(() => { });
+        }
+
+        // ── Alerts ──
+        function updateAlerts() {
+            fetch('/api/alerts').then(r => r.json()).then(alertList => {
+                const list = document.getElementById('alerts-list');
+                const q = document.getElementById('alert-search').value.toLowerCase();
+                
+                let filteredAlerts = alertList;
+                if (q) {
+                    filteredAlerts = alertList.filter(a => String(a.shipment_id).toLowerCase().includes(q));
+                }
+
+                if (!filteredAlerts.length) {
+                    list.innerHTML = `<div class="alert-item" style="color:#4a5d73;text-align:center;padding:30px;">No matching alerts...</div>`;
+                    document.getElementById('alert-count').textContent = 0;
+                    return;
+                }
+                
+                document.getElementById('alert-count').textContent = filteredAlerts.length;
+
+                const recent = [...filteredAlerts].reverse().slice(0, 30);
+
+                list.innerHTML = recent.map(a => {
+                    const isDivert   = a.action === 'DIVERT';
+                    const isDoor     = a.action && a.action.includes('DOOR');
+                    const cls        = isDivert ? 'divert' : isDoor ? 'door' : '';
+                    const badgeCls   = isDivert ? 'divert' : isDoor ? 'door' : 'continue';
+                    const time       = a.timestamp ? a.timestamp.split('T')[1]?.substring(0, 8) : '';
+                    const hasSOP     = a.sop_recommendation && a.sop_recommendation.length > 10;
+                    
+                    // Identify alert uniquely using action instead of timestamp to prevent collapse on update
+                    const alertKey   = `${a.shipment_id}_${a.action}`;
+                    const wasOpen    = expandedAlerts.has(alertKey);
+
+                    const sop = hasSOP ? `
+                        <div class="sop-toggle" data-akey="${alertKey}">📋 SOP Recommendation ▾</div>
+                        <div class="sop-rec">${a.sop_recommendation}</div>
+                    ` : '';
+
+                    return `<div class="alert-item ${cls}${wasOpen ? ' expanded' : ''}" data-akey="${alertKey}">
+                        <div class="alert-top">
+                            <span class="alert-id">${a.shipment_id}</span>
+                            <span class="alert-badge ${badgeCls}">${a.action}</span>
+                        </div>
+                        <div class="alert-detail">
+                            ${a.product_type} · ${a.temp ? a.temp.toFixed(1) + '°C' : ''} · Risk: ${a.risk ? (a.risk * 100).toFixed(0) + '%' : ''} · ${time}
+                        </div>
+                        ${sop}
+                    </div>`;
+                }).join('');
+
+                list.querySelectorAll('.sop-toggle').forEach(btn => {
+                    btn.addEventListener('click', e => {
+                        e.stopPropagation();
+                        const item = btn.closest('.alert-item');
+                        const key  = item.dataset.akey;
+                        if (item.classList.toggle('expanded')) {
+                            expandedAlerts.add(key);
+                        } else {
+                            expandedAlerts.delete(key);
+                        }
+                    });
+                });
+
+                list.querySelectorAll('.alert-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const key = item.dataset.akey;
+                        if (item.classList.toggle('expanded')) {
+                            expandedAlerts.add(key);
+                        } else {
+                            expandedAlerts.delete(key);
+                        }
+                    });
+                });
+
+            }).catch(() => { });
+        }
+
+        // ── Predictions ──
+        async function updatePredictions() {
+            try {
+                const ships  = await fetch('/api/shipments').then(r => r.json());
+                const subset = ships.slice(0, 10);
+
+                const results = await Promise.all(
+                    subset.map(s =>
+                        fetch(`/api/history/${s.shipment_id}`)
+                            .then(r => r.json())
+                            .then(data => ({ s, data }))
+                            .catch(() => null)
+                    )
+                );
+
+                const predictions = [];
+                results.forEach(res => {
+                    if (!res) return;
+                    const { s, data } = res;
+                    if (data.prediction &&
+                        data.prediction.trend === 'rising' &&
+                        data.prediction.predicted_temp_30min > s.safe_max_temp) {
+                        predictions.push({
+                            id:        s.shipment_id,
+                            current:   data.prediction.current_temp,
+                            predicted: data.prediction.predicted_temp_30min,
+                            threshold: s.safe_max_temp,
+                        });
+                    }
+                });
+
+                const banner = document.getElementById('predictionBanner');
+                const plist  = document.getElementById('predictionList');
+                
+                if (predictions.length > 0) {
+                    banner.style.display = 'flex';
+                    plist.innerHTML = predictions.map(p =>
+                        `<span class="pred-item">⚠️ ${p.id}: ${p.current}°C → ${p.predicted}°C in 30min (limit: ${p.threshold}°C)</span>`
+                    ).join('');
+                } else {
+                    banner.style.display = 'none';
+                }
+            } catch (e) { }
+        }
+
+        // ── Per-Shipment Routing Mode ──
+        function cycleRoutingMode(shipmentId) {
+            const modes = ['SAFETY', 'BALANCED', 'ECO'];
+            const icons = { SAFETY: '🛡️', BALANCED: '⚖️', ECO: '🌱' };
+            const el    = document.getElementById('rm-' + shipmentId);
+            if (!el) return;
+            
+            const current = el.title || 'BALANCED';
+            const next    = modes[(modes.indexOf(current) + 1) % 3];
+            
+            fetch(`/api/routing-mode/${shipmentId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: next })
+            }).then(r => r.json()).then(() => {
+                el.textContent = icons[next];
+                el.title = next;
+            }).catch(() => { });
+        }
+
+        // ── Clock ──
+        function updateClock() {
+            document.getElementById('clock').textContent =
+                new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        // ── SSE ──
+        let sseRetryDelay = 2000;
+        function connectSSE() {
+            const evtSource = new EventSource('/api/stream');
+            evtSource.onmessage = e => {
+                sseRetryDelay = 2000;
+                try {
+                    const msg = JSON.parse(e.data);
+                    if (msg.type === 'update') updateMarker(msg.data);
+                    if (msg.type === 'sop_update') {
+                        const badge = document.getElementById('sopSyncBadge');
+                        badge.classList.add('updating');
+                        document.getElementById('sopSyncText').textContent = 'SOP updating...';
+                        setTimeout(() => {
+                            badge.classList.remove('updating');
+                            document.getElementById('sopSyncText').textContent = 'SOP synced just now';
+                        }, 3000);
+                    }
+                } catch (_) { }
+            };
+            evtSource.onerror = () => {
+                console.warn(`SSE disconnected — retrying in ${sseRetryDelay / 1000}s`);
+                evtSource.close();
+                setTimeout(() => {
+                    sseRetryDelay = Math.min(sseRetryDelay * 2, 30000);
+                    connectSSE();
+                }, sseRetryDelay);
+            };
+        }
+        connectSSE();
+
+        // ── Notifications ──
+        function updateNotifications() {
+            fetch('/api/notifications').then(r => r.json()).then(notifs => {
+                const list = document.getElementById('notif-list');
+                const q = document.getElementById('notif-search').value.toLowerCase();
+                
+                let filteredNotifs = notifs;
+                if (q) {
+                    filteredNotifs = notifs.filter(n => String(n.shipment_id).toLowerCase().includes(q));
+                }
+
+                if (!filteredNotifs || !filteredNotifs.length) {
+                    list.innerHTML = `<div style="color:#4a5d73;text-align:center;padding:20px;font-size:11px">No matching notifications...</div>`;
+                    document.getElementById('notif-count').textContent = '0 ▾';
+                    return;
+                }
+
+                const seen = new Map();
+                [...filteredNotifs].reverse().forEach(n => {
+                    const key = `${n.shipment_id}_${n.type}`;
+                    if (!seen.has(key)) seen.set(key, n);
+                });
+                const deduped = [...seen.values()];
+                document.getElementById('notif-count').textContent = `${deduped.length} ▾`;
+
+                list.innerHTML = deduped.slice(0, 30).map((n, i) => {
+                    const isWA       = n.channel === 'whatsapp';
+                    const isDivert   = n.type === 'DIVERT_WHATSAPP';
+                    const isRepair   = n.type === 'REPAIR_WHATSAPP';
+                    const isDelivery = n.type === 'DELIVERY_EMAIL';
+                    const cls        = isDivert ? 'divert-wa' : isRepair ? 'repair-wa' : 'delivery-em';
+                    const channelCls = isWA ? 'wa' : 'email';
+                    const icon       = isDivert ? '🚨' : isRepair ? '🔧' : '✅';
+                    const label      = isDivert ? 'DIVERT' : isRepair ? 'REPAIR' : 'DELIVERED';
+                    const recipient  = n.recipient || '';
+                    const time       = n.timestamp ? n.timestamp.split('T')[1]?.substring(0, 8) : '';
+                    const preview    = (n.message || '').split('\n')[0].substring(0, 50);
+                    
+                    // Identify notif uniquely to retain expand state
+                    const notifKey   = `${n.shipment_id}_${n.type}`;
+                    const wasOpen    = expandedNotifs.has(notifKey);
+
+                    // Track cooldown state to reset button
+                    const inCooldown = sentCooldowns.has(notifKey);
+                    const sent       = inCooldown;
+                    
+                    const sendLabel  = isDelivery ? 'Send Email' : 'Send WhatsApp';
+                    const sendBtnId  = `send-btn-${i}`;
+
+                    return `<div class="notif-item ${cls} ${wasOpen ? 'expanded' : ''}" id="notif-${i}" data-nkey="${notifKey}">
+                        <div class="notif-top">
+                            <span style="font-weight:700;color:#e0e6f0">${icon} ${n.shipment_id} — ${label}</span>
+                            <span class="notif-channel ${channelCls}">${isWA ? '📱 WhatsApp' : '📧 Email'}</span>
+                        </div>
+                        <div style="color:#5a6f85;font-size:10px;margin-bottom:4px">
+                            To: ${recipient} · ${time}
+                        </div>
+                        <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+                            <button id="${sendBtnId}"
+                                    data-sid="${n.shipment_id}"
+                                    data-type="${n.type}"
+                                    class="send-notif-btn"
+                                    style="background:${sent ? '#1e3050' : (isDelivery ? '#4fc3f7' : '#25D366')};
+                                           color:${sent ? '#5a6f85' : '#000'};
+                                           border:none;border-radius:6px;padding:4px 10px;font-size:10px;
+                                           font-weight:700;cursor:${sent ? 'default' : 'pointer'};transition:all 0.3s"
+                                    ${sent ? 'disabled' : ''}>
+                                ${sent ? '✓ Sent' : sendLabel + ' ▶'}
+                            </button>
+                            <span class="notif-expand" data-target="notif-${i}">
+                                ${preview}... ▾
+                            </span>
+                        </div>
+                        <div class="notif-msg">${(n.message || '').replace(/</g, '&lt;')}</div>
+                    </div>`;
+                }).join('');
+
+                list.querySelectorAll('.send-notif-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        if (btn.disabled) return;
+                        sendNotification(btn.dataset.sid, btn.dataset.type, btn.id);
+                    });
+                });
+                
+                list.querySelectorAll('.notif-expand').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const item = document.getElementById(btn.dataset.target);
+                        const nkey = item.dataset.nkey;
+                        if (item.classList.toggle('expanded')) {
+                            expandedNotifs.add(nkey);
+                        } else {
+                            expandedNotifs.delete(nkey);
+                        }
+                    });
+                });
+            }).catch(() => { });
+        }
+
+        // ── Send notification to driver ──
+        function sendNotification(shipmentId, notifType, btnId) {
+            const btn = document.getElementById(btnId);
+            if (!btn || btn.disabled) return;
+            
+            // Mark button as sent
+            btn.textContent = 'Sending...';
+            btn.style.background = '#1e3050';
+            btn.disabled = true;
+
+            const notifKey = `${shipmentId}_${notifType}`;
+            
+            fetch('/api/push-notification-to-driver', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ shipment_id: shipmentId, type: notifType })
+            }).then(r => r.json()).then(() => {
+                btn.textContent = '✓ Sent to Driver';
+                btn.style.color = '#66bb6a';
+                
+                // Track cooldown to reset button after 3 seconds
+                sentCooldowns.add(notifKey);
+                setTimeout(() => {
+                    sentCooldowns.delete(notifKey);
+                    updateNotifications(); // Force redraw to reset button styling
+                }, 3000);
+                
+            }).catch(() => {
+                btn.textContent = '✗ Failed';
+                btn.style.background = '#ff5252';
+                btn.disabled = false;
+            });
+        }
+
+        // Apply search input event listeners so users can type and see results immediately
+        document.getElementById('alert-search').addEventListener('input', updateAlerts);
+        document.getElementById('fleet-search').addEventListener('input', updateShipmentList);
+        document.getElementById('notif-search').addEventListener('input', updateNotifications);
+
+        // ── Polling ──
+        setInterval(updateMetrics,       2000);
+        setInterval(updateShipmentList,  3000);
+        setInterval(updateAlerts,        3000);
+        setInterval(updateNotifications, 3000);
+        setInterval(updateClock,         1000);
+        setInterval(loadHubs,           30000);
+        setInterval(updatePredictions,  10000);
+
+        // ── Init ──
+        updateMetrics();
+        updateShipmentList();
+        updateAlerts();
+        updateNotifications();
+        updateClock();
+        loadHubs();
+        setTimeout(updatePredictions, 8000);
+
+        // ── SOP Sync Status ──
+        let lastSopChangeCount = 0;
+        function updateSopStatus() {
+            fetch('/api/sop-status').then(r => r.json()).then(data => {
+                const badge  = document.getElementById('sopSyncBadge');
+                const text   = document.getElementById('sopSyncText');
+                const ago    = data.synced_seconds_ago;
+                const agoStr = ago < 5 ? 'just now' : ago < 60 ? ago + 's ago' : Math.floor(ago / 60) + 'm ago';
+
+                if (data.change_count > lastSopChangeCount && lastSopChangeCount > 0) {
+                    badge.classList.add('updating');
+                    text.textContent = 'SOP updated! ' + agoStr;
+                    setTimeout(() => badge.classList.remove('updating'), 3000);
+                } else {
+                    text.textContent = 'SOP synced ' + agoStr;
+                }
+                lastSopChangeCount = data.change_count;
+            }).catch(() => { });
+        }
+        updateSopStatus();
+        setInterval(updateSopStatus, 3000);
+    </script>
+</body>
+
+</html>

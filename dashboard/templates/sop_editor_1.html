@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveCold — SOP Editor & RAG Demo</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #060b14;
+            color: #e0e6f0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: linear-gradient(135deg, #080e1e 0%, #0e1a33 100%);
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(79, 195, 247, 0.1);
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #4fc3f7, #00e5ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 16px;
+        }
+
+        .nav-links a {
+            color: #4fc3f7;
+            font-size: 11px;
+            text-decoration: none;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .nav-links a:hover {
+            opacity: 1;
+        }
+
+        .nav-links a.active {
+            opacity: 1;
+            font-weight: 700;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        /* ── SOP Sync Badge ── */
+        .sop-sync-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(76, 175, 80, 0.10);
+            border: 1px solid rgba(76, 175, 80, 0.25);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #4caf50;
+            transition: all 0.4s ease;
+        }
+
+        .sop-sync-badge.updating {
+            background: rgba(255, 183, 77, 0.15);
+            border-color: rgba(255, 183, 77, 0.4);
+            color: #ffb74d;
+        }
+
+        .sop-sync-dot {
+            width: 7px;
+            height: 7px;
+            background: #4caf50;
+            border-radius: 50%;
+            transition: all 0.4s ease;
+        }
+
+        .sop-sync-badge.updating .sop-sync-dot {
+            background: #ffb74d;
+            animation: sopPulse 0.8s ease 3;
+        }
+
+        @keyframes sopPulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 183, 77, 0.6);
+            }
+
+            50% {
+                box-shadow: 0 0 0 8px rgba(255, 183, 77, 0);
+            }
+        }
+
+        .change-count {
+            font-size: 10px;
+            color: #ba68c8;
+            background: rgba(186, 104, 200, .12);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        /* ── Main Layout ── */
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        /* ── Editor Panel (Left) ── */
+        .editor-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid rgba(79, 195, 247, 0.08);
+            min-width: 0;
+        }
+
+        .panel-title {
+            padding: 10px 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #4a5d73;
+            background: rgba(6, 11, 20, 0.95);
+            border-bottom: 1px solid rgba(79, 195, 247, 0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .editor-toolbar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 5px 14px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, #4caf50, #2e7d32);
+            color: #fff;
+        }
+
+        .btn-save:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, .3);
+        }
+
+        .btn-save:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-reset {
+            background: rgba(255, 255, 255, .06);
+            color: #8899aa;
+            border: 1px solid rgba(255, 255, 255, .08);
+        }
+
+        .btn-reset:hover {
+            background: rgba(255, 255, 255, .1);
+        }
+
+        .save-status {
+            font-size: 11px;
+            color: #66bb6a;
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+
+        .save-status.show {
+            opacity: 1;
+        }
+
+        #sopEditor {
+            flex: 1;
+            width: 100%;
+            resize: none;
+            background: #0a1020;
+            color: #c8d6e5;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12.5px;
+            line-height: 1.6;
+            padding: 16px 20px;
+            border: none;
+            outline: none;
+            tab-size: 4;
+        }
+
+        /* ── Query Panel (Right) ── */
+        .query-panel {
+            width: 480px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            background: #080e1a;
+        }
+
+        .query-input-area {
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(79, 195, 247, 0.06);
+            flex-shrink: 0;
+        }
+
+        .query-input-area label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #4a5d73;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .query-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        #queryInput {
+            flex: 1;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, .04);
+            border: 1px solid rgba(79, 195, 247, .12);
+            border-radius: 8px;
+            color: #e0e6f0;
+            font-family: inherit;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        #queryInput:focus {
+            border-color: rgba(79, 195, 247, .4);
+        }
+
+        .btn-ask {
+            background: linear-gradient(135deg, #4fc3f7, #0288d1);
+            color: #fff;
+            white-space: nowrap;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-ask:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(79, 195, 247, .3);
+        }
+
+        .btn-ask:disabled {
+            opacity: 0.5;
+            cursor: wait;
+            transform: none;
+        }
+
+        .preset-queries {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .preset-btn {
+            background: rgba(79, 195, 247, .06);
+            border: 1px solid rgba(79, 195, 247, .12);
+            color: #81d4fa;
+            padding: 3px 10px;
+            border-radius: 14px;
+            font-size: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            background: rgba(79, 195, 247, .14);
+        }
+
+        /* ── Answer Cards ── */
+        .answers-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .answer-card {
+            background: rgba(10, 16, 32, .8);
+            border: 1px solid rgba(79, 195, 247, .08);
+            border-radius: 12px;
+            overflow: hidden;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .answer-header {
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(79, 195, 247, .03);
+            border-bottom: 1px solid rgba(79, 195, 247, .06);
+        }
+
+        .answer-query {
+            font-size: 12px;
+            font-weight: 600;
+            color: #81d4fa;
+            max-width: 70%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .answer-meta {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .answer-tag {
+            font-size: 9px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .answer-tag.before {
+            background: rgba(255, 183, 77, .15);
+            color: #ffb74d;
+        }
+
+        .answer-tag.after {
+            background: rgba(76, 175, 80, .15);
+            color: #66bb6a;
+        }
+
+        .answer-tag.current {
+            background: rgba(79, 195, 247, .15);
+            color: #4fc3f7;
+        }
+
+        .answer-time {
+            font-size: 10px;
+            color: #4a5d73;
+        }
+
+        .answer-body {
+            padding: 14px 16px;
+            font-size: 12.5px;
+            line-height: 1.7;
+            color: #b0c4d8;
+            white-space: pre-line;
+        }
+
+        .answer-source {
+            padding: 6px 16px 10px;
+            font-size: 10px;
+            color: #3a5060;
+        }
+
+        /* ── Loading Spinner ── */
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 20px;
+            color: #4fc3f7;
+            font-size: 13px;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(79, 195, 247, .2);
+            border-top-color: #4fc3f7;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ── Empty State ── */
+        .empty-state {
+            text-align: center;
+            padding: 60px 30px;
+            color: #3a5060;
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .empty-state h3 {
+            font-size: 15px;
+            color: #5a6f85;
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        /* ── Diff Highlight ── */
+        .diff-highlight {
+            background: rgba(255, 183, 77, .08);
+            border: 1px solid rgba(255, 183, 77, .2);
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin: 0 16px 12px;
+            font-size: 11px;
+            color: #ffb74d;
+        }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #1e3050;
+            border-radius: 3px;
+        }
+
+        /* ── Responsive Mobile Design ── */
+        @media (max-width: 768px) {
+            body {
+                height: auto;
+                overflow-y: auto;
+            }
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+                padding: 16px;
+            }
+            .header-left {
+                width: 100%;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+            .nav-links {
+                width: 100%;
+                gap: 12px;
+                justify-content: flex-start;
+            }
+            .header-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .main-content {
+                flex-direction: column;
+                overflow: visible;
+                height: auto;
+            }
+            .editor-panel {
+                width: 100%;
+                height: 50vh; /* Fixed visual proportion so user can scroll naturally past it */
+                min-height: 350px;
+                border-right: none;
+                border-bottom: 4px solid #000;
+                flex: none;
+            }
+            .query-panel {
+                width: 100%;
+                height: 75vh;
+                min-height: 500px;
+                flex: none;
+            }
+            .panel-title {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+                padding: 12px 16px;
+            }
+            .editor-toolbar {
+                width: 100%;
+                justify-content: flex-end;
+            }
+            .answer-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .answer-query {
+                max-width: 100%;
+                white-space: normal;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-left">
+            <h1>🧊 LiveCold</h1>
+            <div class="nav-links">
+                <a href="/">📊 Dashboard</a>
+                <a href="/analytics">📈 Analytics</a>
+                <a href="/sop-editor" class="active">📝 SOP Editor</a>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="sop-sync-badge" id="sopSyncBadge">
+                <div class="sop-sync-dot"></div>
+                <span id="sopSyncText">SOP synced</span>
+            </div>
+            <span class="change-count" id="changeCount">0 edits</span>
+        </div>
+    </div>
+
+    <div class="main-content">
+
+        <div class="editor-panel">
+            <div class="panel-title">
+                📄 SOP Document Editor
+                <div class="editor-toolbar">
+                    <span class="save-status" id="saveStatus">✓ Saved</span>
+                    <button class="btn btn-reset" onclick="loadSOP()">↻ Reload</button>
+                    <button class="btn btn-save" id="saveBtn" onclick="saveSOP()">💾 Save Changes</button>
+                </div>
+            </div>
+            <textarea id="sopEditor" spellcheck="false" placeholder="Loading SOP document..."></textarea>
+        </div>
+
+        <div class="query-panel">
+            <div class="panel-title">🤖 RAG Query Panel</div>
+
+            <div class="query-input-area">
+                <label>Ask a question about the SOP</label>
+                <div class="query-row">
+                    <input id="queryInput" type="text" placeholder="e.g. What is the temp range for Dairy?"
+                        onkeydown="if(event.key==='Enter') askQuestion()">
+                    <button class="btn-ask" id="askBtn" onclick="askQuestion()">Ask →</button>
+                </div>
+                <div class="preset-queries">
+                    <button class="preset-btn"
+                        onclick="setQuery('What is the temperature range for Dairy products?')">🧀 Dairy temp?</button>
+                    <button class="preset-btn"
+                        onclick="setQuery('What should I do for a critical temperature excursion?')">🚨 Critical
+                        alert?</button>
+                    <button class="preset-btn" onclick="setQuery('What are the door open time limits?')">🚪 Door
+                        limits?</button>
+                    <button class="preset-btn" onclick="setQuery('What is the diversion approval process?')">🔄
+                        Diversion?</button>
+                </div>
+            </div>
+
+            <div class="answers-area" id="answersArea">
+                <div class="empty-state">
+                    <div class="icon">🔍</div>
+                    <h3>Ask a question to get started</h3>
+                    <p>Edit the SOP on the left, save, then ask the same<br>
+                        question again to see real-time RAG updates in action.</p>
+                    <p style="margin-top:12px;color:#4fc3f7;">
+                        <strong>Demo Flow:</strong><br>
+                        1. Ask a question<br>
+                        2. Edit the SOP (change a temperature value)<br>
+                        3. Click Save → ask the same question<br>
+                        4. See the answer update instantly! ⚡
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let originalSOP = '';
+        let sopChangeCount = 0;
+        let answerCount = 0;
+        let hasUnsavedChanges = false;
+
+        // ── Load SOP Content ──
+        function loadSOP() {
+            fetch('/api/sop-content').then(r => r.json()).then(data => {
+                if (data.content) {
+                    document.getElementById('sopEditor').value = data.content;
+                    originalSOP = data.content;
+                    sopChangeCount = data.change_count || 0;
+                    document.getElementById('changeCount').textContent = sopChangeCount + ' edits';
+                    hasUnsavedChanges = false;
+                }
+            }).catch(() => {
+                document.getElementById('sopEditor').value = '⚠ Could not load SOP file.';
+            });
+        }
+
+        // ── Save SOP Content ──
+        function saveSOP() {
+            const btn = document.getElementById('saveBtn');
+            const status = document.getElementById('saveStatus');
+            const content = document.getElementById('sopEditor').value;
+
+            btn.disabled = true;
+            btn.textContent = '💾 Saving...';
+
+            fetch('/api/sop-content', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            }).then(r => r.json()).then(data => {
+                if (data.status === 'saved') {
+                    btn.textContent = '✓ Saved!';
+                    btn.style.background = 'linear-gradient(135deg, #66bb6a, #43a047)';
+                    status.textContent = '✓ SOP saved — RAG will use updated content';
+                    status.classList.add('show');
+                    sopChangeCount = data.change_count;
+                    document.getElementById('changeCount').textContent = sopChangeCount + ' edits';
+                    originalSOP = content;
+                    hasUnsavedChanges = false;
+
+                    // Flash sync badge
+                    const badge = document.getElementById('sopSyncBadge');
+                    badge.classList.add('updating');
+                    document.getElementById('sopSyncText').textContent = 'SOP updated just now!';
+                    setTimeout(() => badge.classList.remove('updating'), 3000);
+
+                    setTimeout(() => {
+                        btn.textContent = '💾 Save Changes';
+                        btn.style.background = '';
+                        btn.disabled = false;
+                    }, 2000);
+                    setTimeout(() => status.classList.remove('show'), 4000);
+                } else {
+                    btn.textContent = '✗ Error';
+                    btn.disabled = false;
+                    setTimeout(() => btn.textContent = '💾 Save Changes', 2000);
+                }
+            }).catch(() => {
+                btn.textContent = '✗ Failed';
+                btn.disabled = false;
+                setTimeout(() => btn.textContent = '💾 Save Changes', 2000);
+            });
+        }
+
+        // ── Track unsaved changes ──
+        document.getElementById('sopEditor').addEventListener('input', () => {
+            hasUnsavedChanges = true;
+            document.getElementById('saveBtn').disabled = false;
+        });
+
+        // ── Set query from preset ──
+        function setQuery(q) {
+            document.getElementById('queryInput').value = q;
+            document.getElementById('queryInput').focus();
+        }
+
+        // ── Ask Question ──
+        function askQuestion() {
+            const input = document.getElementById('queryInput');
+            const query = input.value.trim();
+            if (!query) return;
+
+            const askBtn = document.getElementById('askBtn');
+            askBtn.disabled = true;
+            askBtn.textContent = '⏳';
+
+            const area = document.getElementById('answersArea');
+
+            // Remove empty state if present
+            const emptyState = area.querySelector('.empty-state');
+            if (emptyState) emptyState.remove();
+
+            // Add loading indicator at top
+            const loadingId = 'loading-' + Date.now();
+            const loadingEl = document.createElement('div');
+            loadingEl.id = loadingId;
+            loadingEl.className = 'loading';
+            loadingEl.innerHTML = '<div class="spinner"></div> Querying RAG pipeline...';
+            area.insertBefore(loadingEl, area.firstChild);
+
+            // Determine tag based on whether SOP was edited since last query
+            answerCount++;
+            const tag = answerCount === 1 ? 'current' : (hasUnsavedChanges ? 'current' : 'after');
+            const tagLabel = answerCount === 1 ? 'QUERY' : (tag === 'after' ? 'AFTER EDIT' : 'QUERY');
+
+            // Add timeout using AbortController
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
+            fetch('/api/rag-query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: query }),
+                signal: controller.signal
+            }).then(r => {
+                clearTimeout(timeoutId);
+                if (!r.ok) throw new Error('Server error: ' + r.status);
+                return r.json();
+            }).then(data => {
+                // Remove loading
+                document.getElementById(loadingId)?.remove();
+
+                // Mark previous answer as "BEFORE" if this is an "AFTER"
+                if (answerCount > 1) {
+                    const cards = area.querySelectorAll('.answer-card');
+                    cards.forEach(card => {
+                        const tagEl = card.querySelector('.answer-tag.current, .answer-tag.after');
+                        if (tagEl && tagEl.classList.contains('current')) {
+                            tagEl.className = 'answer-tag before';
+                            tagEl.textContent = 'BEFORE EDIT';
+                        }
+                    });
+                }
+
+                const now = new Date().toLocaleTimeString();
+                const source = data.source === 'pathway_rag' ? '⚡ Pathway RAG' : '🤖 Direct LLM';
+
+                const card = document.createElement('div');
+                card.className = 'answer-card';
+                card.innerHTML = `
+                    <div class="answer-header">
+                        <div class="answer-query">❓ ${query}</div>
+                        <div class="answer-meta">
+                            <span class="answer-tag ${tag}">${tagLabel}</span>
+                            <span class="answer-time">${now}</span>
+                        </div>
+                    </div>
+                    <div class="answer-body">${(data.answer || 'No response').replace(/</g, '&lt;')}</div>
+                    <div class="answer-source">${source}</div>
+                `;
+                area.insertBefore(card, area.firstChild);
+
+                askBtn.disabled = false;
+                askBtn.textContent = 'Ask →';
+            }).catch(err => {
+                clearTimeout(timeoutId);
+                document.getElementById(loadingId)?.remove();
+                askBtn.disabled = false;
+                askBtn.textContent = 'Ask →';
+
+                const errMsg = err.name === 'AbortError'
+                    ? 'Request timed out (60s). Make sure the RAG pipeline is running: python main.py rag-v2'
+                    : (err.message || 'Unknown error. Make sure both dashboard and RAG pipeline are running.');
+
+                const card = document.createElement('div');
+                card.className = 'answer-card';
+                card.innerHTML = `
+                    <div class="answer-header">
+                        <div class="answer-query">❓ ${query}</div>
+                        <div class="answer-meta"><span class="answer-tag before">ERROR</span></div>
+                    </div>
+                    <div class="answer-body" style="color:#ff5252">${errMsg}</div>
+                `;
+                area.insertBefore(card, area.firstChild);
+            });
+        }
+
+        // ── SOP Sync Status Polling ──
+        let lastChangeCount = 0;
+        function updateSopStatus() {
+            fetch('/api/sop-status').then(r => r.json()).then(data => {
+                const badge = document.getElementById('sopSyncBadge');
+                const text = document.getElementById('sopSyncText');
+                const ago = data.synced_seconds_ago;
+                const agoStr = ago < 5 ? 'just now' : ago < 60 ? ago + 's ago' : Math.floor(ago / 60) + 'm ago';
+
+                if (data.change_count > lastChangeCount && lastChangeCount > 0) {
+                    badge.classList.add('updating');
+                    text.textContent = 'SOP updated ' + agoStr;
+                    setTimeout(() => badge.classList.remove('updating'), 3000);
+                } else {
+                    text.textContent = 'SOP synced ' + agoStr;
+                }
+                lastChangeCount = data.change_count;
+                document.getElementById('changeCount').textContent = data.change_count + ' edits';
+            }).catch(() => { });
+        }
+
+        // ── Init ──
+        loadSOP();
+        updateSopStatus();
+        setInterval(updateSopStatus, 3000);
+    </script>
+</body>
+
+</html>

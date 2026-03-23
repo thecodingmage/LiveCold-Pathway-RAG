@@ -1,0 +1,23 @@
+services:
+  # MQTT Broker
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    restart: unless-stopped
+
+  # LiveCold Application (Dashboard + Pipeline + Simulators)
+  livecold:
+    build: .
+    image: tarun1948/livecold:latest
+    ports:
+      - "5050:5050"
+    env_file:
+      - .env
+    environment:
+      - MQTT_HOST=mosquitto
+    depends_on:
+      - mosquitto
+    restart: unless-stopped

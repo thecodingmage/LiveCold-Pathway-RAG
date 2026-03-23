@@ -1,0 +1,32 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+
+# Virtual environments
+venv/
+.venv/
+.venv-slim/
+
+# Lock files (auto-generated)
+uv.lock
+
+# macOS
+.DS_Store
+
+# IDEs
+.vscode/
+
+# Project runtime data & outputs
+demo_data/
+metrics/
+output/
+Cache/
+watched_docs/
+
+# Secrets
+.env

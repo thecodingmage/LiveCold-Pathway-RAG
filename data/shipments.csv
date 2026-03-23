@@ -1,0 +1,6 @@
+shipment_id,cargo_type,cargo_value_inr,threshold_c,destination
+S001,dairy,250000,6.0,Delhi
+S002,vegetables,80000,8.0,Mumbai
+S003,meat,500000,0.0,Bangalore
+S004,fruits,120000,12.0,Chennai
+S005,seafood,350000,2.0,Kolkata

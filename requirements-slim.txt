@@ -1,0 +1,12 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+# Requirements for LiveCold (Pathway + Demo)
+flask
+paho-mqtt
+litellm
+python-dotenv
+requests
+# Pathway framework (core of the hackathon)
+pathway
+# Local embeddings (no API calls)
+sentence-transformers
+tiktoken

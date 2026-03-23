@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LiveCold Driver - {{ shipment_id }}</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* ── Softer Color Scheme (Lighter Gray) ── */
+        :root {
+            --bg-main: #272a30;
+            /* Lighter gray background */
+            --bg-panel: #32363e;
+            /* Slightly lighter gray for panels */
+            --border-color: #454a54;
+            /* Visible neutral border */
+            --text-primary: #f8fafc;
+            --text-secondary: #a1b0c4;
+            --accent-blue: #38bdf8;
+            --accent-green: #4ade80;
+            --accent-red: #ef4444;
+            --accent-orange: #fbbf24;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: var(--bg-panel);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .header .shipment-badge {
+            background: rgba(56, 189, 248, 0.15);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-blue);
+        }
+
+        /* ── Action Banner ── */
+        .action-banner {
+            padding: 12px 20px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 15px;
+            display: none;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .action-banner.divert {
+            display: block;
+            background: #991b1b;
+            color: #fca5a5;
+            animation: pulseBanner 2s infinite;
+        }
+
+        .action-banner.safe {
+            display: block;
+            background: #166534;
+            color: #86efac;
+        }
+
+        @keyframes pulseBanner {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.85;
+            }
+        }
+
+        /* ── Main Layout (Desktop) ── */
+        .main-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ── Left Sidebar ── */
+        .sidebar {
+            width: 380px;
+            background: var(--bg-main);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        /* ── Status Bar ── */
+        .status-bar {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 16px;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .stat-card {
+            background: var(--bg-main);
+            border-radius: 10px;
+            padding: 12px 10px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-card .label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .stat-card .value {
+            font-size: 20px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .stat-card.temp .value {
+            color: var(--accent-green);
+        }
+
+        .stat-card.temp.danger .value {
+            color: var(--accent-red);
+        }
+
+        .stat-card.risk .value {
+            color: var(--accent-orange);
+        }
+
+        .stat-card.risk.high .value {
+            color: var(--accent-red);
+        }
+
+        .stat-card.speed .value {
+            color: var(--accent-blue);
+        }
+
+        .route-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .routing-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .routing-badge.safety {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+        }
+
+        .routing-badge.balanced {
+            background: rgba(56, 189, 248, 0.2);
+            color: var(--accent-blue);
+        }
+
+        .routing-badge.eco {
+            background: rgba(74, 222, 128, 0.2);
+            color: var(--accent-green);
+        }
+
+        /* ── Mobile Map Toggle Button ── */
+        .toggle-map-btn {
+            display: none;
+            margin: 16px;
+            padding: 14px;
+            background: #0284c7;
+            color: white;
+            text-align: center;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* ── Driver Notifications ── */
+        .driver-notif-panel {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-title {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .driver-notif-item {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .driver-notif-item.divert {
+            border-left: 4px solid var(--accent-red);
+        }
+
+        .driver-notif-item.repair {
+            border-left: 4px solid var(--accent-orange);
+        }
+
+        .driver-notif-item.delivery {
+            border-left: 4px solid var(--accent-green);
+        }
+
+        .driver-notif-msg {
+            white-space: pre-line;
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.5;
+            margin-top: 6px;
+        }
+
+        /* ── Hub Panel ── */
+        .hub-panel {
+            padding: 16px;
+            flex: 1;
+        }
+
+        .hub-card {
+            background: var(--bg-panel);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hub-card.recommended {
+            border-color: var(--accent-green);
+            background: rgba(74, 222, 128, 0.05);
+        }
+
+        .hub-info h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .hub-info .details {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .hub-metrics {
+            text-align: right;
+        }
+
+        .hub-metrics .distance {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .hub-metrics .eta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .hub-metrics .cost {
+            font-size: 12px;
+            color: var(--accent-orange);
+        }
+
+        .navigate-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: #15803d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+
+        .occupancy-bar {
+            height: 4px;
+            background: var(--bg-main);
+            border-radius: 2px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+
+        .occupancy-fill {
+            height: 100%;
+            transition: width 0.5s;
+        }
+
+        /* ── Map Area ── */
+        .map-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .mobile-map-header {
+            display: none;
+            padding: 12px 20px;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1001;
+        }
+
+        .close-map-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #map {
+            flex: 1;
+            z-index: 1;
+        }
+
+        /* ── Map CSS Filters ── */
+        .light-green-labels {
+            /* Inverts dark labels to white, then tints to a soft light green */
+            filter: invert(1) sepia(100%) hue-rotate(85deg) saturate(150%) brightness(1.4) drop-shadow(0px 0px 2px rgba(0, 0, 0, 0.8));
+        }
+
+        /* ── Toast Notifications ── */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            background: var(--bg-panel);
+            color: var(--text-primary);
+            padding: 12px 20px;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-blue);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            font-size: 13px;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* ── Responsive Design (Mobile & Tablet) ── */
+        @media (max-width: 992px) {
+            .sidebar {
+                width: 100%;
+                border-right: none;
+            }
+
+            .toggle-map-btn {
+                display: block;
+            }
+
+            .map-container {
+                display: none;
+            }
+
+            .map-container.active {
+                display: flex;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 2000;
+                background: var(--bg-main);
+            }
+
+            .map-container.active .mobile-map-header {
+                display: flex;
+            }
+
+            .toast-container {
+                bottom: 24px;
+                right: 50%;
+                transform: translateX(50%);
+                align-items: center;
+            }
+
+            .toast {
+                transform: translateY(100%);
+            }
+
+            .toast.show {
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>🧊 LiveCold Driver</h1>
+        <div class="shipment-badge">{{ shipment_id }}</div>
+    </div>
+
+    <div class="action-banner" id="actionBanner"></div>
+
+    <div class="main-layout">
+        <div class="sidebar">
+            <div class="status-bar">
+                <div class="stat-card temp" id="tempCard">
+                    <div class="label">Temperature</div>
+                    <div class="value" id="tempValue">--°C</div>
+                </div>
+                <div class="stat-card risk" id="riskCard">
+                    <div class="label">Risk</div>
+                    <div class="value" id="riskValue">--%</div>
+                </div>
+                <div class="stat-card speed">
+                    <div class="label">Speed</div>
+                    <div class="value" id="speedValue">-- km/h</div>
+                </div>
+            </div>
+
+            <div class="route-header">
+                <span style="font-size:12px;color:var(--text-secondary)">🗺️ Route: <b id="routeInfo"
+                        style="color:var(--text-primary)">Loading...</b></span>
+                <span class="routing-badge balanced" id="routingModeBadge">⚖️ BALANCED</span>
+            </div>
+
+            <button class="toggle-map-btn" onclick="toggleMobileMap()">🗺️ Open Map View</button>
+
+            <div class="driver-notif-panel" id="driverNotifPanel">
+                <div class="section-title">
+                    <span>📲 Messages</span>
+                    <span id="driverNotifCount" style="color:var(--accent-blue);font-weight:bold;">0</span>
+                </div>
+                <div id="driverNotifList"
+                    style="font-size:13px;color:var(--text-secondary);text-align:center;padding:10px">
+                    No messages yet
+                </div>
+            </div>
+
+            <div class="hub-panel" id="hubPanel">
+                <div class="section-title">📦 Nearest Cold Storage Hubs</div>
+                <div id="hubList">
+                    <div style="font-size:13px;color:var(--text-secondary);text-align:center;">Loading hubs...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="map-container" id="mapContainer">
+            <div class="mobile-map-header">
+                <span style="font-weight:600;">Live Map Tracking</span>
+                <button class="close-map-btn" onclick="toggleMobileMap()">❌ Close</button>
+            </div>
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        const SHIPMENT_ID = "{{ shipment_id }}";
+        let map, truckMarker, hubMarkers = [], routeLine = null;
+
+        // ── Initialize map ──
+        map = L.map('map').setView([22.5, 78.9], 5);
+
+        // Base dark map WITHOUT text (allows deep zooming without losing tiles)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+            attribution: '© CartoDB',
+            maxZoom: 22,
+            maxNativeZoom: 16
+        }).addTo(map);
+
+        // Text labels ONLY layer, using Voyager for richer local text data
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
+            maxZoom: 22,
+            maxNativeZoom: 16,
+            className: 'light-green-labels'
+        }).addTo(map);
+
+        // Mobile Map Toggle Logic
+        function toggleMobileMap() {
+            const mapEl = document.getElementById('mapContainer');
+            mapEl.classList.toggle('active');
+
+            if (mapEl.classList.contains('active')) {
+                setTimeout(() => {
+                    map.invalidateSize();
+                }, 100);
+            }
+        }
+
+        // Custom truck icon
+        const truckIcon = L.divIcon({
+            html: '<div style="font-size:28px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3))">🚚</div>',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            className: ''
+        });
+
+        // Hub icon
+        function hubIcon(status) {
+            return L.divIcon({
+                html: `<div style="font-size:22px;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.3))">🏭</div>`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 14],
+                className: ''
+            });
+        }
+
+        // Toast Notification System
+        function showToast(message) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ── Fetch shipment data ──
+        async function updateShipment() {
+            try {
+                const resp = await fetch('/api/shipments');
+                const shipments = await resp.json();
+                const s = shipments.find(sh => sh.shipment_id === SHIPMENT_ID);
+                if (!s) return;
+
+                // Update stats
+                const temp = s.temp;
+                const risk = s.risk_probability;
+                const speed = s.speed_kmph || 0;
+
+                document.getElementById('tempValue').textContent = temp != null ? temp.toFixed(1) + '°C' : '--°C';
+                document.getElementById('riskValue').textContent = (risk * 100).toFixed(0) + '%';
+                document.getElementById('speedValue').textContent = speed.toFixed(0) + ' km/h';
+
+                // Color coding
+                const tempCard = document.getElementById('tempCard');
+                const riskCard = document.getElementById('riskCard');
+                tempCard.classList.toggle('danger', temp > s.safe_max_temp || temp < s.safe_min_temp);
+                riskCard.classList.toggle('high', risk > 0.6);
+
+                // Action banner
+                const banner = document.getElementById('actionBanner');
+                if (s.recommended_action === 'DIVERT') {
+                    banner.className = 'action-banner divert';
+                    banner.textContent = '🚨 DIVERT — Route to nearest hub immediately!';
+                } else {
+                    banner.className = 'action-banner safe';
+                    banner.textContent = '✅ CONTINUE — Cargo is safe';
+                }
+
+                // Update truck marker
+                if (s.lat && s.lon) {
+                    if (!truckMarker) {
+                        truckMarker = L.marker([s.lat, s.lon], { icon: truckIcon }).addTo(map);
+                        map.setView([s.lat, s.lon], 8);
+                    } else {
+                        truckMarker.setLatLng([s.lat, s.lon]);
+                    }
+                    truckMarker.bindPopup(`<b>${SHIPMENT_ID}</b><br>
+                        ${s.product_type} | ${temp?.toFixed(1)}°C<br>
+                        ${s.origin} → ${s.destination}<br>
+                        Risk: ${(risk * 100).toFixed(0)}%`);
+                }
+
+                // Fetch nearest hubs
+                fetchNearestHubs();
+
+            } catch (e) {
+                console.error('Update error:', e);
+            }
+        }
+
+        // ── Fetch nearest hubs ──
+        async function fetchNearestHubs() {
+            try {
+                const resp = await fetch(`/api/nearest-hubs/${SHIPMENT_ID}`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+
+                const hubList = document.getElementById('hubList');
+                hubList.innerHTML = '';
+
+                // Clear old hub markers + route
+                hubMarkers.forEach(m => map.removeLayer(m));
+                hubMarkers = [];
+                if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+
+                data.nearest_hubs.forEach((hub, idx) => {
+                    const card = document.createElement('div');
+                    card.className = 'hub-card' + (idx === 0 ? ' recommended' : '');
+
+                    const occColor = hub.occupied_pct > 80 ? '#ef4444' : hub.occupied_pct > 60 ? '#fbbf24' : '#22c55e';
+
+                    card.innerHTML = `
+                        <div class="hub-info">
+                            <h4>${idx === 0 ? '⭐ ' : ''}${hub.name}</h4>
+                            <div class="details">
+                                Cap: ${hub.capacity_tonnes}T | Accepts: ${hub.accepts.join(', ')}
+                            </div>
+                            <div class="occupancy-bar">
+                                <div class="occupancy-fill" style="width:${hub.occupied_pct}%; background:${occColor}"></div>
+                            </div>
+                        </div>
+                        <div class="hub-metrics">
+                            <div class="distance">${hub.distance_km} km</div>
+                            <div class="eta">ETA: ${hub.eta_minutes} min</div>
+                            <div class="cost">₹${hub.diversion_cost_inr.toLocaleString()}</div>
+                        </div>
+                    `;
+                    hubList.appendChild(card);
+
+                    // Hub marker on map
+                    const marker = L.marker([hub.lat, hub.lon], { icon: hubIcon(hub.status) }).addTo(map);
+                    marker.bindPopup(`<b>${hub.name}</b><br>
+                        Status: ${hub.status}<br>
+                        Occupancy: ${hub.occupied_pct}%<br>
+                        Distance: ${hub.distance_km} km`);
+                    hubMarkers.push(marker);
+
+                    // Route line to recommended hub
+                    if (idx === 0 && data.truck_lat) {
+                        routeLine = L.polyline(
+                            [[data.truck_lat, data.truck_lon], [hub.lat, hub.lon]],
+                            { color: '#22c55e', weight: 4, dashArray: '10,8', opacity: 0.8 }
+                        ).addTo(map);
+                    }
+                });
+
+                // Navigate button for recommended hub
+                if (data.nearest_hubs.length > 0) {
+                    const btn = document.createElement('button');
+                    btn.className = 'navigate-btn';
+                    btn.textContent = `📍 Navigate to ${data.nearest_hubs[0].name}`;
+                    btn.onclick = () => {
+                        const h = data.nearest_hubs[0];
+                        // Standard Google Maps Directions format
+                        window.open(`https://www.google.com/maps/dir/?api=1&origin=$${data.truck_lat},${data.truck_lon}&destination=${h.lat},${h.lon}`, '_blank');
+                    };
+                    hubList.appendChild(btn);
+                }
+
+            } catch (e) {
+                console.error('Hub fetch error:', e);
+            }
+        }
+
+        // ── Auto-refresh ──
+        updateShipment();
+        setInterval(updateShipment, 3000);
+
+        // ── Fetch driver notifications ──
+        const dismissedNotifs = new Set();
+
+        async function updateDriverNotifications() {
+            try {
+                const resp = await fetch(`/api/driver-notifications/${SHIPMENT_ID}`);
+                const notifs = await resp.json();
+                const list = document.getElementById('driverNotifList');
+                if (!notifs || notifs.length === 0) return;
+
+                // Filter dismissed
+                const active = notifs.filter((_, i) => !dismissedNotifs.has(i));
+                document.getElementById('driverNotifCount').textContent = active.length;
+
+                if (active.length === 0) {
+                    list.innerHTML = '<div style="font-size:13px;color:var(--text-secondary);text-align:center;padding:10px">All messages dismissed</div>';
+                    return;
+                }
+
+                const currentHtml = list.innerHTML;
+                const newHtml = [...active].reverse().map((n, displayIdx) => {
+                    const origIdx = notifs.indexOf(n);
+                    const isDivert = (n.type || '').includes('DIVERT');
+                    const isRepair = (n.type || '').includes('REPAIR');
+                    const cls = isDivert ? 'divert' : isRepair ? 'repair' : 'delivery';
+                    const icon = isDivert ? '🚨' : isRepair ? '🔧' : '✅';
+                    const label = isDivert ? 'DIVERT NOW' : isRepair ? 'REPAIR NEEDED' : 'DELIVERY REPORT';
+                    const time = n.timestamp ? n.timestamp.split('T')[1]?.substring(0, 8) : '';
+
+                    const lines = (n.message || '').split('\n').filter(l => l.trim());
+                    const summary = lines.slice(0, 4).join('\n');
+
+                    let actionButtonHtml = '';
+                    if (isDivert) {
+                        actionButtonHtml = `
+                        <div style="margin-top: 10px; text-align: right;">
+                            <button onclick="acceptDiversion('${SHIPMENT_ID}', ${origIdx})" style="background: var(--accent-red); color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: 600; cursor: pointer; font-size: 12px;">✅ Accept Diversion</button>
+                        </div>`;
+                    }
+
+                    return `<div class="driver-notif-item ${cls}" id="dnotif-${origIdx}">
+                        <div style="display:flex;justify-content:space-between;align-items:center">
+                            <b style="font-size:13px;color:var(--text-primary)">${icon} ${label}</b>
+                            <div style="display:flex;gap:12px;align-items:center">
+                                <span style="color:var(--text-secondary);font-size:11px">${time}</span>
+                                <span onclick="dismissNotif(${origIdx})" 
+                                      style="color:var(--text-secondary);cursor:pointer;font-size:18px;line-height:1;transition:all 0.2s"
+                                      onmouseover="this.style.color='var(--accent-red)'"
+                                      onmouseout="this.style.color='var(--text-secondary)'"
+                                      title="Dismiss">×</span>
+                            </div>
+                        </div>
+                        <div class="driver-notif-msg">${summary.replace(/</g, '<')}</div>
+                        ${actionButtonHtml}
+                    </div>`;
+                }).join('');
+
+                if (!currentHtml.includes(newHtml.substring(0, 50))) {
+                    list.innerHTML = newHtml;
+                }
+
+            } catch (e) { }
+        }
+
+        function dismissNotif(idx) {
+            dismissedNotifs.add(idx);
+            const el = document.getElementById(`dnotif-${idx}`);
+            if (el) {
+                // Smooth collapse animation
+                el.style.opacity = '0';
+                el.style.transform = 'translateX(-20px)';
+
+                setTimeout(() => {
+                    el.style.display = 'none';
+                    updateDriverNotifications();
+                }, 300);
+            }
+            showToast('Message dismissed ✅');
+        }
+
+        async function acceptDiversion(shipmentId, idx) {
+            try {
+                const resp = await fetch(`/api/accept-diversion/${shipmentId}`, {
+                    method: 'POST'
+                });
+
+                if (resp.ok) {
+                    showToast('✅ Diversion Accepted. Rerouting...');
+                    dismissNotif(idx); // Clear notification
+                    updateShipment(); // Refresh map/status immediately
+                } else {
+                    const error = await resp.json();
+                    showToast('⚠️ Error: ' + (error.error || 'Failed to accept'));
+                }
+            } catch (e) {
+                showToast('⚠️ Network Error');
+            }
+        }
+
+        updateDriverNotifications();
+        setInterval(updateDriverNotifications, 3000);
+
+        // ── Fetch routing mode ──
+        async function updateRoutingMode() {
+            try {
+                const resp = await fetch('/api/shipments');
+                const ships = await resp.json();
+                const s = ships.find(sh => sh.shipment_id === SHIPMENT_ID);
+                if (!s) return;
+                const mode = s.routing_mode || 'BALANCED';
+                const badge = document.getElementById('routingModeBadge');
+                const icons = { 'SAFETY': '🛡️', 'BALANCED': '⚖️', 'ECO': '🌱' };
+                const classes = { 'SAFETY': 'safety', 'BALANCED': 'balanced', 'ECO': 'eco' };
+                badge.className = `routing-badge ${classes[mode] || 'balanced'}`;
+                badge.textContent = `${icons[mode] || '⚖️'} ${mode}`;
+                document.getElementById('routeInfo').textContent = `${s.origin} → ${s.destination}`;
+            } catch (e) { }
+        }
+        updateRoutingMode();
+        setInterval(updateRoutingMode, 3000);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,398 @@
+# Cold Chain Standard Operating Procedures (SOP)
+## Version 2.3 - January 2026
+
+---
+
+## §1. Temperature Control Requirements
+
+### §1.1 Temperature Ranges by Product Type
+
+All refrigerated cargo must be maintained within specified temperature ranges:
+
+- **Dairy Products**: +2°C to +10°C
+- **Frozen Meat**: -18°C to -12°C
+- **Seafood**: -1°C to +2°C
+- **Fresh Vegetables**: +7°C to +10°C
+- **Fresh Fruits**: +8°C to +12°C
+- **Vaccines**: +2°C to +8°C
+- **Pharmaceuticals**: +2°C to +8°C
+- **Ice Cream**: -25°C to -18°C
+- **Flowers**: +2°C to +8°C
+
+<!-- PRODUCT_TEMP_RANGES
+Vaccines:2:8
+Frozen_Meat:-18:-12
+Dairy:2:6
+Seafood:-1:2
+Vegetables:7:10
+Fruits:8:12
+Pharmaceuticals:2:8
+Ice_Cream:-25:-18
+Flowers:2:8
+-->
+
+### §1.2 Temperature Monitoring
+
+Temperature must be monitored continuously with readings recorded at minimum every 5 minutes. Sensors must be calibrated monthly and replaced every 12 months.
+
+---
+
+## §2. Sensor Verification Protocols
+
+### §2.1 Primary Sensor Check
+
+When a temperature alert is triggered, operators must immediately verify the reading using the following protocol:
+
+1. Check redundant sensor on the same pallet (if available)
+2. Visually inspect sensor placement and condition
+3. Compare with historical readings from last 30 minutes
+4. Check for door open events in the system log
+
+**Time Requirement**: Verification must be completed within 2 minutes of alert.
+
+### §2.2 Sensor Calibration
+
+If sensors show discrepancy >1°C, recalibration is required before continuing operations.
+
+---
+
+## §3. Temperature Excursion Response
+
+### §3.1 Minor Excursion (0-2°C above threshold)
+
+For temperature elevations of 0-2°C above specified range:
+
+1. Check reefer unit status immediately
+2. Verify door closure
+3. Monitor for 10 minutes
+4. If temperature does not decrease, proceed to §3.2
+
+### §3.2 Moderate Excursion (2-5°C above threshold)
+
+For temperature elevations of 2-5°C above specified range:
+
+1. **IMMEDIATE ACTION**: Check compressor status and refrigerant levels
+2. Alert reefer technician within 5 minutes
+3. If temperature exceeds threshold for >15 minutes, evaluate diversion options (see §4)
+4. Document incident with photos and GPS coordinates
+5. Notify customer service if delay >30 minutes expected
+
+**Critical Timeframe**: Action must begin within 5 minutes of alert.
+
+### §3.3 Critical Excursion (>5°C above threshold)
+
+For temperature elevations exceeding 5°C above specified range:
+
+1. **URGENT**: Immediately stop vehicle in safe location
+2. Alert fleet manager and reefer technician simultaneously
+3. Initiate emergency diversion protocols (see §4.3)
+4. Document complete event timeline
+5. Prepare for possible cargo salvage or disposal
+
+**Critical Timeframe**: Vehicle must stop within 10 minutes.
+
+---
+
+## §4. Diversion Decision Protocols
+
+### §4.1 Diversion Assessment Criteria
+
+Diversion should be considered when:
+
+- Temperature exceeds threshold by >3°C for >20 minutes
+- Reefer unit failure confirmed with >2 hour repair time
+- Risk of spoilage exceeds 40% based on cargo value
+- Expected value saved exceeds diversion cost + ₹10,000 buffer
+
+### §4.2 Diversion Decision Matrix
+
+**Decision Formula**:
+```
+Expected Loss (Continue) = P(spoilage) × Cargo Value
+Expected Loss (Divert) = Diversion Cost + Residual Risk × Cargo Value
+
+If Expected Loss (Continue) > Expected Loss (Divert) → DIVERT
+```
+
+**Approval Requirements**:
+- Diversions costing <₹25,000: Fleet Manager approval
+- Diversions costing ₹25,000-₹100,000: Operations Director approval
+- Diversions costing >₹100,000: VP Operations approval
+
+### §4.3 Emergency Diversion Hubs (Automated Sync)
+
+### §4.3 Automated Diversion Hub Management
+
+The system maintains a dynamic database of approved cold storage facilities and reefer repair stations. When a diversion is required, the **Hub Manager** automatically identifies the optimal facility based on:
+
+1.  **Proximity**: Real-time distance from the truck's current GPS location.
+2.  **Traffic Conditions**: Current congestion and estimated time of arrival (ETA).
+3.  **Capacity**: Current occupancy and available tonnes.
+4.  **Temperature Requirements**: Availability of specific zones (Ultra-Cold, Frozen, Chilled) matching the cargo type.
+5.  **Service Type**: Capability to handle both storage and mechanical reefer repairs.
+
+The selected hub details, including navigation links and contact information, are transmitted directly to the driver via the automated notification system.
+
+**Verification**: Facility availability and status are verified in real-time before any diversion recommendation is issued.
+
+### §4.4 Diversion Fuel & Carbon Calculation
+
+When calculating diversion cost, include:
+
+- Fuel cost: Base rate + distance × ₹15/km
+- Driver overtime if applicable
+- Hub facility fees (typically ₹2,000-₹5,000/day)
+- Carbon footprint: Report CO₂ emissions using 2.68 kg CO₂/liter diesel
+
+**Carbon Offset**: Calculate waste-prevented emissions vs additional fuel emissions.
+
+---
+
+## §5. Door Management
+
+### §5.1 Door Opening Protocols
+
+Refrigerated cargo doors may only be opened:
+
+- During scheduled loading/unloading at approved facilities
+- For emergency inspection (requires manager approval)
+- For reefer unit maintenance
+
+**Maximum door open time**: 5 minutes per opening
+
+### §5.2 Door Open Temperature Impact
+
+Expected temperature rise during door operations:
+
+- First minute: +1°C to +2°C
+- After 3 minutes: +3°C to +5°C
+- After 5 minutes: +5°C to +8°C
+
+Recovery time after door closure: Approximately 15-20 minutes to baseline.
+
+### §5.3 Unauthorized Door Opening
+
+If door open event detected without authorization:
+
+1. Alert driver immediately via radio/phone
+2. Verify event with driver
+3. Check cargo security and temperature impact
+4. Document incident in system
+5. If temperature exceeded threshold, follow §3 procedures
+
+---
+
+## §6. Reefer Unit Maintenance
+
+### §6.1 Preventive Maintenance Schedule
+
+All reefer units must follow preventive maintenance:
+
+- **Daily**: Visual inspection, temperature logs review
+- **Weekly**: Compressor operation check, condensate drain check
+- **Monthly**: Filter replacement, refrigerant level check
+- **Quarterly**: Full system diagnostic, electrical connections inspection
+- **Annually**: Complete overhaul and certification
+
+### §6.2 Compressor Failure Indicators
+
+Warning signs of imminent compressor failure:
+
+- Unusual noise or vibration
+- Erratic temperature control (±2°C swings)
+- Increased power consumption (>20% baseline)
+- Refrigerant pressure abnormalities
+- Frost accumulation on lines
+
+**Action**: If any 2+ indicators present, schedule immediate maintenance.
+
+### §6.3 Emergency Reefer Repair
+
+If reefer unit fails during transit:
+
+1. Contact nearest authorized repair facility (see hub list §4.3)
+2. If repair time >2 hours, initiate diversion to cold storage
+3. Document failure mode and symptoms
+4. Preserve diagnostic data for warranty claims
+
+---
+
+## §7. Documentation & Compliance
+
+### §7.1 Incident Documentation Requirements
+
+All temperature excursion incidents must be documented with:
+
+- Event timestamp and duration
+- GPS coordinates at alert time
+- Temperature reading history (30 min before and after)
+- Photos of cargo and reefer unit display
+- Actions taken and personnel contacted
+- Resolution and outcome
+
+**Retention**: All incident records must be retained for 3 years.
+
+### §7.2 Regulatory Reporting
+
+Temperature excursions must be reported to FSSAI (Food Safety and Standards Authority of India) if:
+
+- Temperature exceeded safe range by >5°C
+- Duration exceeded 1 hour
+- Cargo is high-risk (meat, seafood, dairy)
+- Spoilage detected or suspected
+
+**Reporting Deadline**: Within 24 hours of incident.
+
+### §7.3 Customer Notification
+
+Customers must be notified within:
+
+- 1 hour: For critical excursions (§3.3)
+- 4 hours: For moderate excursions requiring diversion
+- 24 hours: For minor excursions resolved without impact
+
+---
+
+## §8. Weather Impact Management
+
+### §8.1 High Ambient Temperature Operations
+
+When ambient temperature exceeds +35°C:
+
+- Reduce door open times by 50%
+- Increase monitoring frequency to every 2 minutes
+- Pre-cool cargo area before loading
+- Avoid midday loading/unloading (11 AM - 3 PM)
+
+### §8.2 Extreme Weather Alerts
+
+Monitor weather forecasts and plan accordingly:
+
+- Heat waves: Consider night-time delivery routes
+- Monsoon: Account for traffic delays in ETA calculations
+- Winter (northern regions): Monitor for diesel gelling in reefer units
+
+### §8.3 Route Planning
+
+Preferred routes should minimize:
+
+- Time in high ambient temperature zones
+- Traffic congestion (reduces reefer efficiency)
+- Distance to backup cold storage facilities
+
+---
+
+## §9. Load Management
+
+### §9.1 Proper Stacking
+
+Improper stacking reduces airflow and cooling efficiency:
+
+- Leave 15 cm clearance from walls and ceiling
+- Stack pallets with adequate spacing (minimum 5 cm)
+- Never block air circulation vents
+- Heavier/denser items on bottom
+
+### §9.2 Load Distribution
+
+Uneven load distribution causes temperature gradients:
+
+- Balance weight across all axles
+- Avoid clustering high-value cargo in one zone
+- Place temperature-sensitive items near cooling unit
+- Use temperature mapping to verify uniformity
+
+### §9.3 Cargo Compatibility
+
+Do not mix incompatible cargo types:
+
+- Strong odors (onions, fish) separate from absorbing foods
+- Different temperature requirements in same compartment
+- Raw and cooked products
+
+### §9.4 Overloading Prevention
+
+Overloading reduces cooling capacity:
+
+- Never exceed rated cargo capacity by weight
+- Never exceed 90% of internal volume
+- Account for ice accumulation in freezer units
+
+---
+
+## §10. Carbon Footprint & Sustainability
+
+### §10.1 Emissions Reporting
+
+Calculate and report CO₂ emissions for all shipments:
+
+- Diesel fuel: 2.68 kg CO₂ per liter
+- Electricity (hub storage): 0.82 kg CO₂ per kWh (India grid average)
+- Food waste: Use product-specific emission factors (see Appendix B)
+
+### §10.2 Waste Prevention Priority
+
+Preventing food waste is top sustainability priority:
+
+**Carbon Benefit Calculation**:
+- Dairy waste prevented: 8.5 kg CO₂e per kg
+- Meat waste prevented: 27.0 kg CO₂e per kg
+- Seafood waste prevented: 5.1 kg CO₂e per kg
+- Vegetables waste prevented: 2.0 kg CO₂e per kg
+- Fruits waste prevented: 1.1 kg CO₂e per kg
+
+**Decision Rule**: If diversion prevents waste with CO₂ benefit exceeding diversion fuel emissions by >3:1 ratio, strongly recommend diversion.
+
+### §10.3 Efficiency Improvements
+
+Continuously optimize for lower emissions:
+
+- Regular reefer maintenance reduces power consumption
+- Route optimization reduces fuel usage
+- Load consolidation improves efficiency
+- Use of eco-friendly refrigerants (R-404A replacement)
+
+---
+
+## Appendix A: Emergency Contact Numbers
+
+- **24/7 Operations Center**: +91-11-XXXX-XXXX
+- **Fleet Manager**: +91-98XXXX-XXXX
+- **Reefer Technical Support**: +91-80XXXX-XXXX
+- **Food Safety Officer**: +91-22XXXX-XXXX
+- **FSSAI Helpline**: 1800-112-100
+
+---
+
+## Appendix B: Food Product Emission Factors
+
+Carbon footprint of food production (kg CO₂e per kg of food):
+
+| Product Type | Production Emissions | Disposal Emissions | Total |
+|-------------|---------------------|-------------------|-------|
+| Dairy | 7.2 | 1.3 | 8.5 |
+| Beef | 23.0 | 4.0 | 27.0 |
+| Pork | 5.5 | 1.0 | 6.5 |
+| Poultry | 5.9 | 1.0 | 6.9 |
+| Seafood | 4.2 | 0.9 | 5.1 |
+| Vegetables | 1.5 | 0.5 | 2.0 |
+| Fruits | 0.8 | 0.3 | 1.1 |
+| Grains | 2.0 | 0.5 | 2.5 |
+
+---
+
+## Document Control
+
+**Version History**:
+- v2.3 (Jan 2026): Added carbon footprint calculations (§10)
+- v2.2 (Oct 2025): Updated diversion hub list (§4.3)
+- v2.1 (Jul 2025): Added weather management section (§8)
+- v2.0 (Apr 2025): Complete revision for FSSAI compliance
+
+**Review Schedule**: Quarterly review by Operations Director
+
+**Distribution**: All fleet managers, drivers, cold storage facility managers
+
+---
+
+**END OF DOCUMENT**

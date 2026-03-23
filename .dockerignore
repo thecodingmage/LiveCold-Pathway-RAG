@@ -1,0 +1,16 @@
+.venv
+.venv-slim
+.git
+__pycache__
+*.pyc
+.env
+Cache
+demo_data
+metrics
+.gitignore
+pyrightconfig.json
+test_*.py
+*.pdf
+uv.lock
+.python-version
+PATHWAY_SETUP.md

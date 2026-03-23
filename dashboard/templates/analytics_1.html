@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiveCold Analytics — Business Intelligence</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0e1a;
+            color: #e0e6ed;
+            min-height: 100vh;
+            overflow-x: hidden; /* Failsafe to prevent body scrolling */
+            width: 100%;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: linear-gradient(135deg, #0d1321 0%, #1a1f36 100%);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .header h1 span {
+            color: #4fc3f7;
+        }
+
+        .header-nav {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header-nav a {
+            color: #8892a4;
+            text-decoration: none;
+            font-size: 13px;
+            margin-left: 24px;
+            transition: color 0.2s;
+        }
+
+        .header-nav a:hover,
+        .header-nav a.active {
+            color: #4fc3f7;
+        }
+        
+        .refresh-status {
+            color: #3a4560;
+            font-size: 12px;
+            margin-left: auto;
+        }
+
+        /* ── Grid Layout ── */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            padding: 24px 32px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: linear-gradient(145deg, #141928 0%, #0f1320 100%);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: border-color 0.3s;
+            min-width: 0; /* CRITICAL FIX: Allows grid items to shrink smaller than child tables */
+        }
+
+        .card:hover {
+            border-color: rgba(79, 195, 247, 0.2);
+        }
+
+        .card-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #5a6f85;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .card-value {
+            font-size: 36px;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+
+        .card-sub {
+            font-size: 12px;
+            color: #5a6f85;
+            margin-top: 6px;
+        }
+
+        .span2 {
+            grid-column: span 2;
+        }
+
+        .span3 {
+            grid-column: span 3;
+        }
+
+        .span4 {
+            grid-column: span 4;
+        }
+
+        /* ── Colors ── */
+        .green { color: #66bb6a; }
+        .blue { color: #4fc3f7; }
+        .orange { color: #ffb74d; }
+        .red { color: #ff5252; }
+        .purple { color: #ce93d8; }
+
+        /* ── Carbon Card ── */
+        .carbon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .carbon-item {
+            background: rgba(102, 187, 106, 0.06);
+            border: 1px solid rgba(102, 187, 106, 0.15);
+            border-radius: 12px;
+            padding: 14px;
+            text-align: center;
+        }
+
+        .carbon-item .product {
+            font-size: 12px;
+            color: #66bb6a;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .carbon-item .co2val {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 4px 0;
+        }
+
+        .carbon-item .credits {
+            font-size: 11px;
+            color: #5a6f85;
+        }
+
+        /* ── Chart Container ── */
+        .chart-wrap {
+            position: relative;
+            height: 220px;
+            margin-top: 12px;
+        }
+        
+        /* ── Pipeline Grid ── */
+        .pipeline-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 16px;
+            margin-top: 8px;
+        }
+
+        /* ── Search Bar ── */
+        .search-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .search-input {
+            background: #0a0e1a;
+            border: 1px solid rgba(79, 195, 247, 0.3);
+            color: #e0e6ed;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            outline: none;
+            width: 250px;
+            transition: border-color 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .search-input:focus {
+            border-color: #4fc3f7;
+        }
+
+        /* ── Shipment Table Wrapper for Mobile ── */
+        .table-responsive {
+            width: 100%;
+            display: block;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* ── Shipment Table ── */
+        .ship-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+            font-size: 12px;
+            min-width: 700px; /* Ensures it scrolls inside .table-responsive instead of squishing text */
+        }
+
+        .ship-table th {
+            text-align: left;
+            color: #5a6f85;
+            font-weight: 600;
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        .ship-table td {
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            white-space: nowrap;
+        }
+
+        .ship-table tr:hover {
+            background: rgba(79, 195, 247, 0.04);
+        }
+
+        .badge {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        .badge-divert { background: rgba(255, 82, 82, 0.15); color: #ff5252; }
+        .badge-continue { background: rgba(102, 187, 106, 0.15); color: #66bb6a; }
+        .badge-monitoring { background: rgba(255, 183, 77, 0.15); color: #ffb74d; }
+        .badge-safety { background: rgba(255, 82, 82, 0.12); color: #ff5252; }
+        .badge-balanced { background: rgba(79, 195, 247, 0.12); color: #4fc3f7; }
+        .badge-eco { background: rgba(102, 187, 106, 0.12); color: #66bb6a; }
+
+        .btn-report {
+            background: rgba(79, 195, 247, 0.1);
+            border: 1px solid rgba(79, 195, 247, 0.3);
+            color: #4fc3f7;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-report:hover {
+            background: rgba(79, 195, 247, 0.2);
+        }
+
+        /* ── Anomaly Bars ── */
+        .anomaly-bars {
+            margin-top: 16px;
+        }
+
+        .anomaly-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .anomaly-bar .label {
+            width: 80px;
+            font-size: 11px;
+            color: #8892a4;
+        }
+
+        .anomaly-bar .bar-bg {
+            flex: 1;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .anomaly-bar .bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.8s ease;
+            display: flex;
+            align-items: center;
+            padding-left: 8px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .anomaly-bar .count {
+            width: 40px;
+            text-align: right;
+            font-size: 13px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        /* ── Refresh indicator ── */
+        .refresh-dot {
+            width: 8px;
+            height: 8px;
+            background: #66bb6a;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 2s infinite;
+            margin-right: 6px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px; 
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: #141928;
+            border-radius: 16px;
+            padding: 32px;
+            width: 100%;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid rgba(79, 195, 247, 0.2);
+        }
+
+        .modal h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+
+        .modal pre {
+            background: #0a0e1a;
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 11px;
+            overflow-x: auto;
+            line-height: 1.6;
+            color: #8892a4;
+        }
+
+        .modal-close {
+            float: right;
+            background: none;
+            border: none;
+            color: #ff5252;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        /* ── RESPONSIVE MEDIA QUERIES ── */
+
+        @media (max-width: 1024px) {
+            .dashboard {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .span2, .span3, .span4 {
+                grid-column: span 2;
+            }
+            .chart-wrap {
+                height: 250px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 16px 20px;
+                gap: 12px;
+            }
+            .header-nav {
+                width: 100%;
+                gap: 12px;
+            }
+            .header-nav a {
+                margin-left: 0;
+            }
+            .refresh-status {
+                width: 100%;
+                margin-left: 0 !important;
+                margin-top: 4px;
+            }
+            .dashboard {
+                grid-template-columns: 1fr;
+                padding: 16px;
+                gap: 16px;
+            }
+            .span2, .span3, .span4 {
+                grid-column: span 1;
+            }
+            .card {
+                padding: 20px;
+            }
+            .card-value {
+                font-size: 30px; 
+            }
+            .search-input {
+                width: 100%;
+            }
+            .pipeline-grid, .carbon-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .modal {
+                padding: 24px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .pipeline-grid, .carbon-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>🧊 LiveCold <span>Analytics</span></h1>
+        <div class="header-nav">
+            <a href="/">🗺️ Operations Map</a>
+            <a href="/analytics" class="active">📊 Analytics</a>
+            <span class="refresh-status">
+                <span class="refresh-dot"></span>Auto-refresh 5s
+            </span>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <div class="card">
+            <div class="card-title">🌿 Carbon Credits Earned</div>
+            <div class="card-value green" id="cc-total">₹0</div>
+            <div class="card-sub" id="cc-co2">0 tonnes CO₂ avoided</div>
+        </div>
+        <div class="card">
+            <div class="card-title">💰 Cargo Value Saved</div>
+            <div class="card-value blue" id="val-saved">₹0</div>
+            <div class="card-sub" id="val-roi">ROI: 0%</div>
+        </div>
+        <div class="card">
+            <div class="card-title">🚚 Active Shipments</div>
+            <div class="card-value" id="active-ships">0</div>
+            <div class="card-sub" id="total-events">0 events processed</div>
+        </div>
+        <div class="card">
+            <div class="card-title">🛡️ Anomalies Filtered</div>
+            <div class="card-value orange" id="anomaly-total">0</div>
+            <div class="card-sub" id="anomaly-rate">Sensor reliability: --</div>
+        </div>
+
+        <div class="card span2">
+            <div class="card-title">🌿 Carbon Credits by Product</div>
+            <div class="carbon-grid" id="carbon-grid">
+                <div style="color:#3a4560;font-size:12px;text-align:center;padding:20px;width:100%">
+                    Waiting for diversions...
+                </div>
+            </div>
+        </div>
+        <div class="card span2">
+            <div class="card-title">🛡️ Anomaly Detection Breakdown</div>
+            <div class="anomaly-bars" id="anomaly-bars">
+                <div class="anomaly-bar">
+                    <div class="label">L1: Bounds</div>
+                    <div class="bar-bg">
+                        <div class="bar-fill" id="bar-l1"
+                            style="width:0%;background:linear-gradient(90deg,#ff5252,#ff867f)">0</div>
+                    </div>
+                    <div class="count" id="cnt-l1">0</div>
+                </div>
+                <div class="anomaly-bar">
+                    <div class="label">L2: Rate</div>
+                    <div class="bar-bg">
+                        <div class="bar-fill" id="bar-l2"
+                            style="width:0%;background:linear-gradient(90deg,#ffb74d,#ffd54f)">0</div>
+                    </div>
+                    <div class="count" id="cnt-l2">0</div>
+                </div>
+                <div class="anomaly-bar">
+                    <div class="label">L3: Z-Score</div>
+                    <div class="bar-bg">
+                        <div class="bar-fill" id="bar-l3"
+                            style="width:0%;background:linear-gradient(90deg,#4fc3f7,#81d4fa)">0</div>
+                    </div>
+                    <div class="count" id="cnt-l3">0</div>
+                </div>
+                <div class="anomaly-bar">
+                    <div class="label">L4: Stuck</div>
+                    <div class="bar-bg">
+                        <div class="bar-fill" id="bar-l4"
+                            style="width:0%;background:linear-gradient(90deg,#ce93d8,#e1bee7)">0</div>
+                    </div>
+                    <div class="count" id="cnt-l4">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card span2">
+            <div class="card-title">💰 Financial Overview</div>
+            <div class="chart-wrap"><canvas id="finChart"></canvas></div>
+        </div>
+        <div class="card span2">
+            <div class="card-title">📡 Pipeline Performance</div>
+            <div class="pipeline-grid">
+                <div>
+                    <div style="font-size:11px;color:#5a6f85">Events Processed</div>
+                    <div style="font-size:28px;font-weight:700" id="pipe-events">0</div>
+                </div>
+                <div>
+                    <div style="font-size:11px;color:#5a6f85">High Risk Events</div>
+                    <div style="font-size:28px;font-weight:700;color:#ff5252" id="pipe-highrisk">0</div>
+                </div>
+                <div>
+                    <div style="font-size:11px;color:#5a6f85">Diversions Triggered</div>
+                    <div style="font-size:28px;font-weight:700;color:#ffb74d" id="pipe-diverts">0</div>
+                </div>
+                <div>
+                    <div style="font-size:11px;color:#5a6f85">Uptime</div>
+                    <div style="font-size:28px;font-weight:700;color:#66bb6a" id="pipe-uptime">0s</div>
+                </div>
+            </div>
+            <div style="margin-top:20px">
+                <div style="font-size:11px;color:#5a6f85;margin-bottom:6px">Architecture</div>
+                <div
+                    style="font-size:11px;color:#3a4560;background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;line-height:1.8">
+                    Sensors → <span style="color:#4fc3f7">MQTT</span> →
+                    <span style="color:#ffb74d">Pipeline</span> (anomaly + decision engine) →
+                    <span style="color:#4fc3f7">MQTT decisions</span> →
+                    <span style="color:#66bb6a">Dashboard</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card span4">
+            <div class="search-container">
+                <div class="card-title" style="margin-bottom: 0;">🚚 Shipment Fleet — Click report to download</div>
+                <input type="text" id="shipSearch" class="search-input" placeholder="🔍 Search by Shipment ID...">
+            </div>
+            <div class="table-responsive">
+                <table class="ship-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Product</th>
+                            <th>Route</th>
+                            <th>Temp</th>
+                            <th>Risk</th>
+                            <th>Action</th>
+                            <th>Mode</th>
+                            <th>Value</th>
+                            <th>Exposure</th>
+                            <th>Report</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ship-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="reportModal">
+        <div class="modal">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <h2 id="modal-title">Shipment Report</h2>
+            <pre id="modal-body"></pre>
+            <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:10px">
+                <button class="btn-report" onclick="downloadReport('json')" style="font-size:12px;padding:8px 16px">
+                    📥 Download JSON
+                </button>
+                <button class="btn-report" onclick="downloadReport('csv')" style="font-size:12px;padding:8px 16px">
+                    📥 Download CSV
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentReport = null;
+        let allShipments = []; // Global variable to hold all shipments for searching
+
+        // ── Chart Setup ──
+        const finCtx = document.getElementById('finChart').getContext('2d');
+        const finChart = new Chart(finCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Cargo Saved', 'Diversion Costs', 'CO₂ Costs'],
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: ['#66bb6a', '#ffb74d', '#ff5252'],
+                    borderWidth: 0,
+                    hoverOffset: 8,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: '#8892a4', font: { size: 11, family: 'Inter' }, padding: 12 }
+                    }
+                },
+                cutout: '65%',
+            }
+        });
+
+        function formatINR(v) {
+            if (v >= 10000000) return '₹' + (v / 10000000).toFixed(1) + 'Cr';
+            if (v >= 100000) return '₹' + (v / 100000).toFixed(1) + 'L';
+            if (v >= 1000) return '₹' + (v / 1000).toFixed(1) + 'K';
+            return '₹' + v;
+        }
+
+        function formatTime(s) {
+            if (s >= 3600) return Math.floor(s / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm';
+            if (s >= 60) return Math.floor(s / 60) + 'm ' + (s % 60) + 's';
+            return s + 's';
+        }
+
+        // ── Table Rendering Function ──
+        function renderTable() {
+            const searchQuery = document.getElementById('shipSearch').value.toLowerCase();
+            
+            // Filter shipments based on the search query
+            const filteredShipments = allShipments.filter(s => 
+                s.shipment_id.toLowerCase().includes(searchQuery)
+            );
+
+            const tbody = document.getElementById('ship-tbody');
+            tbody.innerHTML = filteredShipments.map(s => {
+                const temp = s.temp != null ? s.temp.toFixed(1) + '°C' : '--';
+                const risk = (s.risk * 100).toFixed(0) + '%';
+                const rc = s.risk > 0.6 ? 'red' : s.risk > 0.3 ? 'orange' : 'green';
+                const actionClass = s.action === 'DIVERT' ? 'badge-divert' :
+                    s.action === 'MONITORING' ? 'badge-monitoring' : 'badge-continue';
+                const modeClass = 'badge-' + s.routing_mode.toLowerCase();
+                const modeIcon = s.routing_mode === 'SAFETY' ? '🛡️' :
+                    s.routing_mode === 'ECO' ? '🌱' : '⚖️';
+                return `<tr>
+                    <td style="font-weight:600;color:#4fc3f7">${s.shipment_id}</td>
+                    <td>${s.product_type}</td>
+                    <td style="font-size:11px">${s.origin}→${s.destination}</td>
+                    <td style="font-weight:600">${temp}</td>
+                    <td><span class="${rc}" style="font-weight:700">${risk}</span></td>
+                    <td><span class="badge ${actionClass}">${s.action}</span></td>
+                    <td><span class="badge ${modeClass}">${modeIcon} ${s.routing_mode}</span></td>
+                    <td style="font-size:11px">${formatINR(s.cargo_value_inr)}</td>
+                    <td style="font-size:11px">${s.exposure_min.toFixed(0)}min</td>
+                    <td><button class="btn-report" onclick="showReport('${s.shipment_id}')">📋</button></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function update() {
+            fetch('/api/analytics')
+                .then(r => r.json())
+                .then(d => {
+                    // Carbon Credits
+                    const cc = d.carbon_credits;
+                    document.getElementById('cc-total').textContent = formatINR(cc.total_credits_inr);
+                    document.getElementById('cc-co2').textContent =
+                        (cc.total_co2_avoided_kg / 1000).toFixed(1) + ' tonnes CO₂ avoided';
+
+                    // Carbon grid
+                    const grid = document.getElementById('carbon-grid');
+                    const products = Object.entries(cc.by_product || {});
+                    if (products.length > 0) {
+                        grid.innerHTML = products.map(([p, v]) => `
+                            <div class="carbon-item">
+                                <div class="product">${p.replace('_', ' ')}</div>
+                                <div class="co2val">${(v.co2_saved_kg / 1000).toFixed(1)}t</div>
+                                <div class="credits">${formatINR(v.credits_inr)} · ${v.count} diversions</div>
+                            </div>
+                        `).join('');
+                    }
+
+                    // Financial
+                    const fin = d.financial;
+                    document.getElementById('val-saved').textContent = formatINR(fin.total_value_saved);
+                    document.getElementById('val-roi').textContent = 'ROI: ' + fin.roi_percent.toFixed(0) + '%';
+
+                    finChart.data.datasets[0].data = [
+                        fin.total_value_saved,
+                        fin.avg_diversion_cost * fin.total_diversions,
+                        fin.total_co2_delta_kg * 40,
+                    ];
+                    finChart.update('none');
+
+                    // Active shipments
+                    const pipe = d.pipeline;
+                    document.getElementById('active-ships').textContent = pipe.active_shipments;
+                    document.getElementById('total-events').textContent = pipe.total_events.toLocaleString() + ' events processed';
+                    document.getElementById('pipe-events').textContent = pipe.total_events.toLocaleString();
+                    document.getElementById('pipe-highrisk').textContent = pipe.high_risk_events;
+                    document.getElementById('pipe-diverts').textContent = fin.total_diversions;
+                    document.getElementById('pipe-uptime').textContent = formatTime(pipe.uptime_seconds);
+
+                    // Anomalies
+                    const an = d.anomalies;
+                    document.getElementById('anomaly-total').textContent = an.total;
+                    const total = Math.max(an.total, 1);
+                    const reliability = pipe.total_events > 0
+                        ? ((1 - an.total / pipe.total_events) * 100).toFixed(1) + '%'
+                        : '--';
+                    document.getElementById('anomaly-rate').textContent = 'Sensor reliability: ' + reliability;
+
+                    // Anomaly bars
+                    const layers = ['l1', 'l2', 'l3', 'l4'];
+                    const layerKeys = ['l1_bounds', 'l2_rate', 'l3_zscore', 'l4_stuck'];
+                    layers.forEach((l, i) => {
+                        const val = an[layerKeys[i]] || 0;
+                        const pct = Math.min(100, (val / total) * 100);
+                        document.getElementById('bar-' + l).style.width = Math.max(pct, val > 0 ? 10 : 0) + '%';
+                        document.getElementById('cnt-' + l).textContent = val;
+                    });
+
+                    // Shipment table update with search support
+                    allShipments = d.shipments || [];
+                    renderTable();
+                })
+                .catch(() => { });
+        }
+
+        // ── Report Modal ──
+        function showReport(sid) {
+            fetch('/api/shipment-report/' + sid)
+                .then(r => r.json())
+                .then(d => {
+                    currentReport = d;
+                    document.getElementById('modal-title').textContent = '📋 Report: ' + sid;
+                    document.getElementById('modal-body').textContent = JSON.stringify(d, null, 2);
+                    document.getElementById('reportModal').classList.add('show');
+                });
+        }
+
+        function closeModal() {
+            document.getElementById('reportModal').classList.remove('show');
+        }
+
+        function downloadReport(format) {
+            if (!currentReport) return;
+            let content, mime, ext;
+            if (format === 'json') {
+                content = JSON.stringify(currentReport, null, 2);
+                mime = 'application/json';
+                ext = 'json';
+            } else {
+                // CSV: flatten the report
+                const rows = Object.entries(currentReport)
+                    .filter(([k, v]) => typeof v !== 'object')
+                    .map(([k, v]) => `${k},${v}`);
+                content = 'field,value\n' + rows.join('\n');
+                mime = 'text/csv';
+                ext = 'csv';
+            }
+            const blob = new Blob([content], { type: mime });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${currentReport.shipment_id}_report.${ext}`;
+            a.click();
+        }
+
+        // Click outside modal to close
+        document.getElementById('reportModal').addEventListener('click', e => {
+            if (e.target === e.currentTarget) closeModal();
+        });
+
+        // ── Search Event Listener ──
+        document.getElementById('shipSearch').addEventListener('input', renderTable);
+
+        // ── Auto-refresh ──
+        update();
+        setInterval(update, 5000);
+    </script>
+</body>
+
+</html>
